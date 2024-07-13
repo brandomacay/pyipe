@@ -110,22 +110,21 @@ def get_video():
 
     try:
         ydl_opts = {
-                'simulate': True,  # Evita la descarga del video
-                'getthumbnail': True,  # Obtiene el enlace del thumbnail
-                'quiet': True
+            'simulate': True,  # Evita la descarga del video
+            'getthumbnail': True,  # Obtiene el enlace del thumbnail
+            'quiet': True
+        }
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+            video_info = {
+                'title': info.get('title', 'N/A'),
+                'channel': info.get('uploader', 'N/A'),
+                'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
+                'thumbnail': info.get('thumbnail', 'N/A'),
             }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(URL, download=False)
-                video_info = {
-                    'title': info.get('title', 'N/A'),
-                    'channel': info.get('uploader', 'N/A'),
-                    'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
-                    'thumbnail': info.get('thumbnail', 'N/A'),
-                }
-                return json.dumps(video_info)
+            return jsonify(video_info)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
