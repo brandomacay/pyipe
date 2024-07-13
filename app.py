@@ -43,7 +43,7 @@ def search():
         search_results = None
 
         if search_type == 'all':
-            search = Search(query, limit=limit, language=language, region=region)
+            search = Search(query, limit=limit)
         elif search_type == 'videos':
             search = VideosSearch(query, limit=limit, language=language, region=region)
         elif search_type == 'channels':
