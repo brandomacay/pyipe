@@ -1,4 +1,4 @@
 Flask==2.0.3
 werkzeug==2.0.3
-youtubesearchpython
 requests==2.27.1
+git+https://github.com/alexmercerind/youtube-search-python.git@1.6.6
