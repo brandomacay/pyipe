@@ -116,7 +116,7 @@ def get_video():
 
     try:
         fetcher = StreamURLFetcher()
-        video = Video.get("https://www.youtube.com/watch?v="+video_url)
+        video = Video.getInfo('https://youtu.be/'+video_url, mode = ResultMode.json)
         url = fetcher.get(video, 251)
         return jsonify({'url': url})
 
