@@ -2,4 +2,4 @@ from flask import Flask
 from app import app as application
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    application.run(host='10.214.203.211', port=5000)
