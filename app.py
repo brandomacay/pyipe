@@ -118,7 +118,7 @@ def get_video():
         fetcher = StreamURLFetcher()
         video = Video.get("https://www.youtube.com/watch?v="+video_url)
         url = fetcher.get(video, 251)
-        return url;
+        return jsonify({'url': url})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
