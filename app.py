@@ -15,7 +15,11 @@ class Video:
         self.description = description
         self.preview_moving = preview_moving
         self.channel_thumbnail = channel_thumbnail
-
+        
+@app.route('/')
+def index():
+    return '¡Hola, Render!'
+    
 @app.route('/search', methods=['GET'])
 def search():
     query = request.args.get('txt_query')
