@@ -49,8 +49,7 @@ def search():
         else:
             return jsonify({'error': 'Tipo de búsqueda "type" no válido o falta "sort_order" para búsqueda personalizada'}), 400
 
-        for _ in range(page - 1):
-            search.next()
+    
 
         search_results = search.result(mode=ResultMode.dict)  # Obtener los resultados como un diccionario
 
