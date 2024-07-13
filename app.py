@@ -115,7 +115,7 @@ def get_video():
             'quiet': True
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(URL, download=False)
+                info = ydl.extract_info(video_url, download=False)
                 video_info = {
                     'title': info.get('title', 'N/A'),
                     'channel': info.get('uploader', 'N/A'),
