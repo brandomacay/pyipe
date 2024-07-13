@@ -115,20 +115,10 @@ def get_video():
         return jsonify({'error': 'Parámetro de consulta "url" requerido'}), 400
 
     try:
-        ydl_opts = {
-            'simulate': True,  # Evita la descarga del video
-            'getthumbnail': True,  # Obtiene el enlace del thumbnail
-            'quiet': True
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(video_url, download=False)
-                video_info = {
-                    'title': info.get('title', 'N/A'),
-                    'channel': info.get('uploader', 'N/A'),
-                    'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
-                    'thumbnail': info.get('thumbnail', 'N/A'),
-                }
-                return jsonify(video_info)
+        fetcher = StreamURLFetcher()
+        video = Video.get("https://www.youtube.com/watch?v="+video_url)
+        url = fetcher.get(video, 251)
+        return url;
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
