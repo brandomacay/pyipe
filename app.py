@@ -3,12 +3,140 @@ from youtubesearchpython import *
 import os
 import sys
 import json
+from urllib.parse import parse_qs
+import scrapetube
+import requests
+from bs4 import BeautifulSoup
 import yt_dlp
 from urllib.parse import urlparse, parse_qs
 import threading
 
 app = Flask(__name__)
+EXPECTED_TOKEN = "asdasplodd34234sdfas32"
 
+# Traducción de las palabras en español y portugués
+TRANSLATIONS = {
+    "ago": {"es": "hace", "pt": "atrás"},
+    "views": {"es": "de visualizaciones", "pt": "de visualizações"},
+    "years": {"es": "años", "pt": "anos"},
+    "year": {"es": "año", "pt": "ano"},
+    "months": {"es": "mes"+"es", "pt": "mesees"},
+    "month": {"es": "mes", "pt": "mês"},
+    "weeks": {"es": "semanas", "pt": "semanas"},
+    "week": {"es": "semana", "pt": "semana"},
+    "days": {"es": "días", "pt": "dias"},
+    "day": {"es": "día", "pt": "dia"},
+    "hours": {"es": "horas", "pt": "horas"},
+    "hour": {"es": "hora", "pt": "hora"},
+    "minutes": {"es": "minutos", "pt": "minutos"},
+    "minute": {"es": "minuto", "pt": "minuto"},
+    "seconds": {"es": "segundos", "pt": "segundos"},
+    "second": {"es": "segundo", "pt": "segundo"}
+}
+def translate_time(time, language):
+    if language in ["es", "pt"]:
+        for word in TRANSLATIONS:
+            if word in time:
+                translated_word = TRANSLATIONS[word].get(language, word)
+                time = time.replace(word, translated_word)
+        
+        # Verificar si el tiempo contiene "ago" y realizar la traducción adecuada
+        if "hace" in time:
+            time_split = time.split()
+            if len(time_split) == 3:  # Solo "1 year ago"
+                return f'{TRANSLATIONS["ago"][language]} {time_split[0]} {time_split[1]}'
+            else:  # "hace 1 año ago"
+                return f'{TRANSLATIONS["ago"][language]} {time_split[-4]} {time_split[-3]} {time_split[-2]} {time_split[-1]}'
+        
+    return time
+
+def extract_video_info(video, language):
+    video_id = video.get('videoId', '')
+    title = video.get('title', {}).get('runs', [{}])[0].get('text', '')
+    channel_name = video.get('longBylineText', {}).get('runs', [{}])[0].get('text', '')
+    published_time = video.get('publishedTimeText', {}).get('simpleText', '')
+    # Traducir la fecha de publicación al idioma especificado
+    if language in ["es", "pt"]:
+        published_time = translate_time(published_time, language)
+    duration = video.get('lengthText', {}).get('simpleText', '')
+    thumbnails = video.get('thumbnail', {}).get('thumbnails', [])
+    best_thumbnail = max(thumbnails, key=lambda t: t.get('width', 0) * t.get('height', 0))
+    best_thumbnail_url = best_thumbnail.get('url', '') if best_thumbnail else ''
+    views = video.get('shortViewCountText', {}).get('simpleText', '')
+    # Traducir "views" al idioma especificado
+    if language in ["es", "pt"]:
+        views = translate_time(views, language)
+    description = ''
+    if 'detailedMetadataSnippets' in video and video['detailedMetadataSnippets']:
+        description_runs = video['detailedMetadataSnippets'][0].get('snippetText', {}).get('runs', [])
+        if len(description_runs) > 1:
+            description = description_runs[1].get('text', '')
+    preview_moving_url = video.get('richThumbnail', {}).get('movingThumbnailRenderer', {}).get('movingThumbnailDetails', {}).get('thumbnails', [{}])[0].get('url', '')
+    channel_thumbnail_url = video.get('channelThumbnailSupportedRenderers', {}).get('channelThumbnailWithLinkRenderer', {}).get('thumbnail', {}).get('thumbnails', [{}])[0].get('url', '')
+    return {
+        'videoId': video_id,
+        'title': title,
+        'channel_name': channel_name,
+        'published_time': published_time,
+        'duration': duration,
+        'views': views,
+        'thumbnail': best_thumbnail_url,
+        'description': description,
+        'preview_moving': preview_moving_url,
+        'channel_thumbnail': channel_thumbnail_url
+    }
+
+def is_live(video):
+    badges = video.get('badges', [])
+    for badge in badges:
+        if 'metadataBadgeRenderer' in badge and 'style' in badge['metadataBadgeRenderer']:
+            if badge['metadataBadgeRenderer']['style'] == 'BADGE_STYLE_TYPE_LIVE_NOW':
+                return True
+    return False
+
+def search_videos(query, limite, language):
+    # Obtener la lista de videos
+    videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
+    # Convertir la lista de videos a formato JSON
+    if videos:
+        try:
+            # Filtrar los videos en vivo
+            filtered_videos = [video for video in videos if not is_live(video)]
+            # Extraer la información de los videos y reducirla
+            reduced_data = [extract_video_info(video, language) for video in filtered_videos]
+            response_data = {"data": reduced_data, "state": "OK"}
+        except Exception as e:
+            print(f"Error processing videos: {e}")
+    return json.dumps(response_data)
+
+import re
+
+def get_autocomplete_suggestions(query):
+    url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        # Obtener el contenido del archivo descargado
+        content = response.text
+        match = re.search(r'\[.+\]', content)
+        if match:
+            # Extraer el contenido JSON de las sugerencias
+            json_data = match.group()
+            try:
+                # Decodificar el JSON y obtener las sugerencias
+                suggestions = json.loads(json_data)[1]
+                # Extraer solo los términos de búsqueda sugeridos
+                suggested_terms = [suggestion[0] for suggestion in suggestions[:10]]
+                response_data = {"suggested": suggested_terms, "state": "OK"}
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON: {e}")
+                response_data = {"suggested": [], "state": "Error"}
+        else:
+            response_data = {"suggested": [], "state": "Error"}
+    else:
+        response_data = {"suggested": [], "state": f"Error"}
+    
+    return json.dumps(response_data)
+    
 class Video:
     def __init__(self, video_id, title, channel_name, published_time, duration, views, thumbnail, description, preview_moving, channel_thumbnail):
         self.videoId = video_id
@@ -40,54 +168,12 @@ def search():
         return jsonify({'error': 'Parámetro de consulta "query" requerido'}), 400
 
     try:
-        search_results = None
-
-        if search_type == 'all':
-            search = Search(query, limit=limit)
-        elif search_type == 'videos':
-            search = VideosSearch(query, limit=limit, language=language, region=region)
-        elif search_type == 'channels':
-            search = ChannelsSearch(query, limit=limit, language=language, region=region)
-        elif search_type == 'playlists':
-            search = PlaylistsSearch(query, limit=limit, language=language, region=region)
-        elif search_type == 'custom' and sort_order:
-            search = CustomSearch(query, VideoSortOrder[sort_order], language=language, region=region)
+        if query:
+            # Realizar la búsqueda de videos y devolver los resultados
+            return [search_videos(query, limit, language).encode()]
         else:
-            return jsonify({'error': 'Tipo de búsqueda "type" no válido o falta "sort_order" para búsqueda personalizada'}), 400
-
-    
-
-        search_results = search.result(mode=ResultMode.dict)  # Obtener los resultados como un diccionario
-
-        # Filtrar videos en vivo, aquellos con duración nula y publicados con fecha nula
-        filtered_results = []
-        for result in search_results['result']:
-            if ('liveBroadcastContent' not in result or result['liveBroadcastContent'] != 'live') and \
-                    'duration' in result and result['duration'] is not None and \
-                    'publishedTime' in result and result['publishedTime'] is not None:
-                
-                # Convertir la duración a milisegundos
-                duration_parts = result['duration'].split(':')
-                minutes = int(duration_parts[0])
-                seconds = int(duration_parts[1])
-                duration_ms = (minutes * 60 + seconds) * 1000
-
-                # Construir el objeto Video filtrado
-                video = Video(
-                    video_id=result['id'],
-                    title=result['title'],
-                    channel_name=result['channel']['name'],
-                    published_time=result['publishedTime'],
-                    duration=duration_ms,
-                    views=result['viewCount']['text'],
-                    thumbnail=result['thumbnails'][0]['url'] if 'thumbnails' in result else None,
-                    description=' '.join([snippet['text'] for snippet in result.get('descriptionSnippet', [])]),
-                    preview_moving=result['thumbnails'][0]['url'] if 'thumbnails' in result else None,
-                    channel_thumbnail=result['channel']['thumbnails'][0]['url'] if 'thumbnails' in result['channel'] else None
-                )
-
-                filtered_results.append(video.__dict__)
-
+            # Si no se proporciona un parámetro válido, devolver un mensaje de error
+            return [b'Please provide a valid text parameter.']
         return jsonify({'data': filtered_results})
 
     except Exception as e:
