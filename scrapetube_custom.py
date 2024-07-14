@@ -336,32 +336,68 @@ def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
     
 def get_video_streams(video_id):
+    # Define the video URL
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    
+    # Create a requests session
+    session = requests.Session()
+    print("debug in:", "sesion")
+    if proxies:
+        session.proxies.update(proxies)
+    
     try:
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-
-        session = requests.Session()
-        response = session.get(url, headers=headers)
+        print("debug in:", "try")
+        # Get the page content
+        response = session.get(url)
         response.raise_for_status()
+        html = response.text
+        
+        # Parse the HTML content
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Initialize an empty list to store stream URLs
+        streams = []
+        
+        # Find all <script> tags in the HTML
+        scripts = soup.find_all('script')
+        
+        # Iterate through all <script> tags to find the one containing 'adaptiveFormats'
+        for script in scripts:
+            if 'adaptiveFormats' in str(script):
+                # Extract the script content
+                script_content = str(script)
+                
+                # Find the start index of 'adaptiveFormats' JSON data
+                start_index = script_content.find('"adaptiveFormats":')
+                print("debug in start_index:", start_index)
 
-        # Extraer el JSON de la respuesta inicial del reproductor
-        start_index = response.text.index('{"responseContext"')
-        end_index = response.text.index('};', start_index) + 1
-        json_str = response.text[start_index:end_index]
-        player_response = json.loads(json_str)
-
-        # Obtener datos de streaming
-        streaming_data = player_response['streamingData']
-        formats = streaming_data.get('formats', [])
-        adaptive_formats = streaming_data.get('adaptiveFormats', [])
-
-        # Construir lista de URLs de los streams
-        streams = [fmt['url'] for fmt in formats] + [fmt['url'] for fmt in adaptive_formats]
-
+                if start_index != -1:
+                    # Find the end index of 'adaptiveFormats' JSON data
+                    end_index = script_content.find('}]', start_index) + 2
+                    
+                    # Extract the JSON data string
+                    json_data_str = script_content[start_index:end_index]
+                    
+                    # Debug print the JSON data string
+                    print("JSON data string:", json_data_str)
+                    
+                    # Decode the JSON data
+                    try:
+                        json_data = json.loads(f'{{{json_data_str}}}')
+                        
+                        # Extract URLs from the JSON data
+                        for fmt in json_data['adaptiveFormats']:
+                            if 'url' in fmt:
+                                streams.append(fmt['url'])
+                    except json.JSONDecodeError as e:
+                        print("JSON decoding error:", e)
+        
+        # Close the session
+        session.close()
+        
         return streams
-
-    except (requests.RequestException, ValueError, KeyError) as e:
-        print(f"Error al obtener los streams de video: {e}")
+    
+    except requests.exceptions.RequestException as e:
+        print(f"HTTP request error: {e}")
         return []
+        
