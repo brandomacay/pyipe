@@ -207,17 +207,14 @@ def get_playlist():
 
 @app.route('/video', methods=['GET'])
 def get_video():
-    video_url = request.args.get('url')
+    video_id = request.args.get('video_id')
+    if not video_id:
+        return jsonify({'error': 'Missing video_id parameter'}), 400
 
-    if not video_url:
-        return jsonify({'error': 'Parámetro de consulta "url" requerido'}), 400
-
+    # Llamar a la función get_video_streams para obtener las URLs de los streams
     try:
-        fetcher = StreamURLFetcher()
-        video = Video.getInfo('https://youtu.be/'+video_url, mode = ResultMode.json)
-        url = fetcher.get(video, 251)
-        return jsonify({'url': url})
-
+        streams = list(get_video_streams(video_id))
+        return jsonify({'streams': streams}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
