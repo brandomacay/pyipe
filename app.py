@@ -216,20 +216,14 @@ def get_playlist():
 @app.route('/video', methods=['GET'])
 def get_streams():
     video_id = request.args.get('video_id')
-    video_url = "https://www.youtube.com/watch?v="+video_id
+    #video_url = "https://www.youtube.com/watch?v="+video_id
     if not video_id:
         return jsonify({'error': 'Missing video_id parameter'}), 400
 
     # Llamar a la función get_video_streams para obtener las URLs de los streams
     try:
-        extractor = YouTubeVideoExtractor(video_url)
-        extractor.extract_video_streams()
-        for itag, stream in extractor.streams.items():
-            print(f"itag: {itag}, url: {stream['url']}, quality: {stream['quality']}, type: {stream['type']}, container: {stream['container']}")
-            app.logger.info(f'Video obtenido:', f"itag: {itag}, url: {stream['url']}, quality: {stream['quality']}, type: {stream['type']}, container: {stream['container']}")
-        
-       # videoss = scrapetube.get_video_streams(video_id)  # Aquí obtienes el video usando scrapetube
-        response_data = {"links":  extractor.streams, "state": "OK"}
+        videoss = scrapetube.get_video_streams(video_id)  # Aquí obtienes el video usando scrapetube
+        response_data = {"links":  videoss, "state": "OK"}
         return jsonify(response_data)
 
     except Exception as e:
