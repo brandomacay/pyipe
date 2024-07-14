@@ -4,7 +4,7 @@ import os
 import sys
 import json
 from urllib.parse import parse_qs
-import scrapetube
+import scrapetube_custom as scrapetube
 import requests
 from bs4 import BeautifulSoup
 import yt_dlp
