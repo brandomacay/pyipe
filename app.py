@@ -220,8 +220,8 @@ def get_streams():
 
     # Llamar a la función get_video_streams para obtener las URLs de los streams
     try:
-        streams = scrapetube.get_video_streams(video_id)
-        app.logger.info(f'Video obtenido: {streams}')  # Registrar la respuesta antes de convertirla a JSON
+        streamss = List(scrapetube.get_video_streams(video_id))
+        app.logger.info(f'Video obtenido: {streamss}')  # Registrar la respuesta antes de convertirla a JSON
         return jsonify({'streams': streams}), 200
     except Exception as e:
         app.logger.error(f'Error al obtener el video: {str(e)}', exc_info=True)
