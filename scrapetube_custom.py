@@ -326,22 +326,7 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
 def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
 
-def get_video_streams(
-    id: str,
-    proxies: dict = None,
-) -> Generator[str, None, None]:
-
-    """Get video streams for a video.
-    
-    Parameters:
-        id (``str``):
-            The video id from the video you want to get the streams for.
-
-        proxies (``dict``, *optional*):
-            A dictionary with the proxies you want to use. Ex:
-            ``{'https': 'http://username:password@101.102.103.104:3128'}``
-    """
-
+def get_video_streams(id: str, proxies: dict = None) -> Generator[str, None, None]:
     url = f"https://www.youtube.com/watch?v={id}"
     session = get_session(proxies)
     html = session.get(url).text
@@ -353,11 +338,18 @@ def get_video_streams(
         if 'adaptiveFormats' in str(script):
             start = str(script).index('"adaptiveFormats"')
             end = str(script).index(']', start) + 1
-            json_data = json.loads(str(script)[start:end])
+            json_data_str = str(script)[start:end]
+            
+            # Print the JSON data string to debug
+            print("JSON data string:", json_data_str)
 
-            for fmt in json_data:
-                if 'url' in fmt:
-                    streams.append(fmt['url'])
+            try:
+                json_data = json.loads(json_data_str)
+                for fmt in json_data:
+                    if 'url' in fmt:
+                        streams.append(fmt['url'])
+            except json.JSONDecodeError as e:
+                print("JSON decoding error:", e)
 
     session.close()
     return streams
