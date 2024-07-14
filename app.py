@@ -213,7 +213,7 @@ def get_video():
 
     # Llamar a la función get_video_streams para obtener las URLs de los streams
     try:
-        streams = list(get_video_streams(video_id))
+        streams = list(scrapetube.get_video_streams(video_id))
         return jsonify({'streams': streams}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
