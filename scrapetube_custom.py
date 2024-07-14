@@ -326,30 +326,51 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
 def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
 
-def get_video_streams(id: str, proxies: dict = None) -> Generator[str, None, None]:
+def get_video_streams(id: str, proxies: dict = None) -> List[str]:
     url = f"https://www.youtube.com/watch?v={id}"
-    session = get_session(proxies)
-    html = session.get(url).text
-    soup = BeautifulSoup(html, 'html.parser')
-    scripts = soup.find_all('script')
-    streams = []
+    session = requests.Session()
 
-    for script in scripts:
-        if 'adaptiveFormats' in str(script):
-            start = str(script).index('"adaptiveFormats"')
-            end = str(script).index(']', start) + 1
-            json_data_str = str(script)[start:end]
-            
-            # Print the JSON data string to debug
-            print("JSON data string:", json_data_str)
+    if proxies:
+        session.proxies.update(proxies)
 
-            try:
-                json_data = json.loads(json_data_str)
-                for fmt in json_data:
-                    if 'url' in fmt:
-                        streams.append(fmt['url'])
-            except json.JSONDecodeError as e:
-                print("JSON decoding error:", e)
+    try:
+        response = session.get(url)
+        response.raise_for_status()
+        html = response.text
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        streams = []
 
-    session.close()
-    return streams
+        # Buscar todos los scripts en la página
+        scripts = soup.find_all('script')
+
+        # Iterar sobre los scripts para encontrar el que contiene 'adaptiveFormats'
+        for script in scripts:
+            script_text = str(script)
+
+            # Encontrar el inicio del JSON de 'adaptiveFormats'
+            start_index = script_text.find('"adaptiveFormats":')
+
+            if start_index != -1:
+                # Buscar el final del JSON dentro del script
+                end_index = script_text.find('}]', start_index) + 2
+
+                # Obtener el JSON de 'adaptiveFormats'
+                json_data_str = script_text[start_index:end_index]
+
+                # Decodificar el JSON
+                try:
+                    json_data = json.loads(f'{{{json_data_str}}}')  # Agregar llaves para convertir a objeto JSON válido
+                    for fmt in json_data['adaptiveFormats']:
+                        if 'url' in fmt:
+                            streams.append(fmt['url'])
+                except json.JSONDecodeError as e:
+                    print(f"Error al decodificar JSON: {e}")
+
+        return streams
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error en la solicitud HTTP: {e}")
+        return []
+    finally:
+        session.close()
