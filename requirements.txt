@@ -1,6 +1,7 @@
 Flask==2.0.3
 werkzeug==2.0.3
 requests==2.27.1
+typing_extensions
 gunicorn
 yt_dlp
 scrapetube
