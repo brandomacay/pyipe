@@ -219,7 +219,7 @@ def get_streams():
         return jsonify({'error': 'Missing video_id parameter'}), 400
 
     # Llamar a la función get_video_streams para obtener las URLs de los streams
-     try:
+    try:
         videoss = scrapetube.get_video(video_id)  # Aquí obtienes el video usando scrapetube
         app.logger.info(f'Video obtenido: {videoss}')  # Registrar la respuesta antes de convertirla a JSON
         return jsonify(video)
