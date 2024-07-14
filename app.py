@@ -95,9 +95,9 @@ def is_live(video):
                 return True
     return False
 
-def search_videos(query, limite, language):
+def search_videos(query, limite, language,search_type):
     # Obtener la lista de videos
-    videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="music")
+    videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type=search_type)
     # Convertir la lista de videos a formato JSON
     response_data = {"data": [], "state": "Error"}
     if videos:
@@ -172,7 +172,7 @@ def search():
     try:
         if query:
             # Realizar la búsqueda de videos y devolver los resultados
-            response = search_videos(query, limit, language)
+            response = search_videos(query, limit, language,search_type)
             return jsonify(response)
         else:
             # Si no se proporciona un parámetro válido, devolver un mensaje de error
