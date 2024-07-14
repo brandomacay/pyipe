@@ -11,7 +11,7 @@ import json
 import time
 from typing import Generator
 from bs4 import BeautifulSoup
-
+import re
 import requests
 from typing_extensions import Literal
 
@@ -357,7 +357,7 @@ def get_video_streams(video_id, proxies=None):
         # Buscar el script que contiene 'ytInitialPlayerResponse'
         script_content = None
         for script in sopa.find_all('script'):
-            if 'ytInitialPlayerResponse' in script.string:
+            if script.string and 'ytInitialPlayerResponse' in script.string:
                 script_content = script.string
                 break
         
