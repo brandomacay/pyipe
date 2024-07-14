@@ -381,7 +381,7 @@ def get_video_streams(video_id):
                         json_data = json.loads(f'{{{json_data_str}}}')
                         
                         # Extract URLs from the JSON data
-                        for fmt in json_data['adaptiveFormats']:
+                        for fmt in json_data['signatureCipher']:
                             if 'url' in fmt:
                                 streams.append(fmt['url'])
                     except json.JSONDecodeError as e:
