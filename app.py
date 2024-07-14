@@ -10,9 +10,16 @@ from bs4 import BeautifulSoup
 import yt_dlp
 from urllib.parse import urlparse, parse_qs
 import threading
+import logging
 
 app = Flask(__name__)
 EXPECTED_TOKEN = "asdasplodd34234sdfas32"
+logging.basicConfig(level=logging.DEBUG)  # Establece el nivel de registro a DEBUG
+
+# Agrega un manejador de registro para enviar registros a la consola
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+app.logger.addHandler(handler)
 
 # Traducción de las palabras en español y portugués
 TRANSLATIONS = {
@@ -216,6 +223,7 @@ def get_streams():
         streams = list(scrapetube.get_video_streams(video_id))
         return jsonify({'streams': streams}), 200
     except Exception as e:
+        app.logger.error(f'Error al obtener el video: {str(e)}', exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
