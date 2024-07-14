@@ -374,12 +374,12 @@ def get_video_streams(video_id):
                     json_data_str = script_content[start_index:end_index]
                     
                     # Debug print the JSON data string
-                   # print("JSON data string:", json_data_str)
+                    
                     
                     # Decode the JSON data
                     try:
                         json_data = json.loads(f'{{{json_data_str}}}')
-                        
+                        print("JSON data string:", json_data)
                         # Extract URLs from the JSON data
                         for fmt in json_data['signatureCipher']:
                             if 'url' in fmt:
