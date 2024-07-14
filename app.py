@@ -222,7 +222,9 @@ def get_streams():
     try:
         videoss = scrapetube.get_video(video_id)  # Aquí obtienes el video usando scrapetube
         app.logger.info(f'Video obtenido: {videoss}')  # Registrar la respuesta antes de convertirla a JSON
-        return jsonify(video)
+        response_data = {"links": videoss, "state": "OK"}
+        return jsonify(response_data)
+
     except Exception as e:
         app.logger.error(f'Error al obtener el video: {str(e)}', exc_info=True)
         return jsonify({'error': 'No se pudo obtener el video'}), 500
