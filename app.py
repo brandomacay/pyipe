@@ -20,7 +20,7 @@ TRANSLATIONS = {
     "views": {"es": "de visualizaciones", "pt": "de visualizações"},
     "years": {"es": "años", "pt": "anos"},
     "year": {"es": "año", "pt": "ano"},
-    "months": {"es": "mes"+"es", "pt": "mesees"},
+    "months": {"es": "meses", "pt": "meses"},
     "month": {"es": "mes", "pt": "mês"},
     "weeks": {"es": "semanas", "pt": "semanas"},
     "week": {"es": "semana", "pt": "semana"},
@@ -33,6 +33,7 @@ TRANSLATIONS = {
     "seconds": {"es": "segundos", "pt": "segundos"},
     "second": {"es": "segundo", "pt": "segundo"}
 }
+
 def translate_time(time, language):
     if language in ["es", "pt"]:
         for word in TRANSLATIONS:
@@ -98,6 +99,7 @@ def search_videos(query, limite, language):
     # Obtener la lista de videos
     videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
     # Convertir la lista de videos a formato JSON
+    response_data = {"data": [], "state": "Error"}
     if videos:
         try:
             # Filtrar los videos en vivo
@@ -107,7 +109,7 @@ def search_videos(query, limite, language):
             response_data = {"data": reduced_data, "state": "OK"}
         except Exception as e:
             print(f"Error processing videos: {e}")
-    return json.dumps(response_data)
+    return response_data
 
 import re
 
@@ -135,8 +137,8 @@ def get_autocomplete_suggestions(query):
     else:
         response_data = {"suggested": [], "state": f"Error"}
     
-    return json.dumps(response_data)
-    
+    return response_data
+
 class Video:
     def __init__(self, video_id, title, channel_name, published_time, duration, views, thumbnail, description, preview_moving, channel_thumbnail):
         self.videoId = video_id
@@ -170,11 +172,11 @@ def search():
     try:
         if query:
             # Realizar la búsqueda de videos y devolver los resultados
-            return [search_videos(query, limit, language).encode()]
+            response = search_videos(query, limit, language)
+            return jsonify(response)
         else:
             # Si no se proporciona un parámetro válido, devolver un mensaje de error
-            return [b'Please provide a valid text parameter.']
-        return jsonify({'data': filtered_results})
+            return jsonify({'error': 'Please provide a valid text parameter.'})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -208,5 +210,6 @@ def get_video():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
