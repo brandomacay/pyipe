@@ -5,7 +5,7 @@ import sys
 import json
 from urllib.parse import parse_qs
 import scrapetube_custom as scrapetube
-import YouTubeVideoExtractor as YouTubeVideoExtractor
+import video_extractor as YouTubeVideoExtractor
 import requests
 from bs4 import BeautifulSoup
 import yt_dlp
