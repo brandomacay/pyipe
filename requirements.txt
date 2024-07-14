@@ -4,4 +4,5 @@ requests==2.27.1
 gunicorn
 yt_dlp
 scrapetube
+bs4
 git+https://github.com/alexmercerind/youtube-search-python.git
