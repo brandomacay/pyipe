@@ -374,7 +374,7 @@ def get_video_streams(video_id):
                     json_data_str = script_content[start_index:end_index]
                     
                     # Debug print the JSON data string
-                    print("JSON data string:", json_data_str)
+                   # print("JSON data string:", json_data_str)
                     
                     # Decode the JSON data
                     try:
