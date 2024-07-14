@@ -334,67 +334,58 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
 
 def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
+    
 def get_video_streams(video_id, proxies=None):
-    # Define the video URL
+    # Definir la URL del video
     url = f"https://www.youtube.com/watch?v={video_id}"
     
-    # Create a requests session
-    session = requests.Session()
+    # Crear una sesión de requests
+    sesion = requests.Session()
     
     if proxies:
-        session.proxies.update(proxies)
+        sesion.proxies.update(proxies)
     
     try:
-        # Get the page content
-        response = session.get(url)
-        response.raise_for_status()
-        html = response.text
+        # Obtener el contenido de la página
+        respuesta = sesion.get(url)
+        respuesta.raise_for_status()
+        html = respuesta.text
         
-        # Parse the HTML content
-        soup = BeautifulSoup(html, 'html.parser')
+        # Parsear el contenido HTML
+        sopa = BeautifulSoup(html, 'html.parser')
         
-        # Initialize an empty list to store stream URLs
-        streams = []
+        # Buscar el script que contiene 'ytInitialPlayerResponse'
+        script_content = None
+        for script in sopa.find_all('script'):
+            if 'ytInitialPlayerResponse' in script.string:
+                script_content = script.string
+                break
         
-        # Find all <script> tags in the HTML
-        scripts = soup.find_all('script')
-        
-        # Iterate through all <script> tags to find the one containing 'adaptiveFormats'
-        for script in scripts:
-            if 'adaptiveFormats' in str(script):
-                # Extract the script content
-                script_content = str(script)
+        if script_content:
+            # Extraer el JSON del contenido del script
+            json_data_match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script_content)
+            if json_data_match:
+                json_data_str = json_data_match.group(1)
                 
-                # Find the start index of 'adaptiveFormats' JSON data
-                start_index = script_content.find('"adaptiveFormats":')
+                # Decodificar los datos JSON
+                try:
+                    datos_json = json.loads(json_data_str)
+                    
+                    # Extraer los enlaces de los formatos adaptativos
+                    formatos = datos_json['streamingData']['adaptiveFormats']
+                    enlaces = [formato['url'] for formato in formatos if 'url' in formato]
+                    
+                    return enlaces
                 
-                if start_index != -1:
-                    # Find the end index of 'adaptiveFormats' JSON data
-                    end_index = script_content.find('}]', start_index) + 2
-                    
-                    # Extract the JSON data string
-                    json_data_str = script_content[start_index:end_index]
-                    
-                    # Debug print the JSON data string
-                    print("JSON data string:", json_data_str)
-                    
-                    # Decode the JSON data
-                    try:
-                        json_data = json.loads(f'{{{json_data_str}}}')
-                        
-                        # Extract URLs from the JSON data
-                        for fmt in json_data['adaptiveFormats']:
-                            if 'url' in fmt:
-                                streams.append(fmt['url'])
-                    except json.JSONDecodeError as e:
-                        print("JSON decoding error:", e)
+                except json.JSONDecodeError as e:
+                    print("Error al decodificar JSON:", e)
         
-        # Close the session
-        session.close()
+        # Cerrar la sesión
+        sesion.close()
         
-        return streams
+        return []
     
     except requests.exceptions.RequestException as e:
-        print(f"HTTP request error: {e}")
+        print(f"Error en la solicitud HTTP: {e}")
         return []
         
