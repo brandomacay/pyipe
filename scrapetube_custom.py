@@ -356,7 +356,11 @@ def get_video_streams(video_id, proxies=None):
         ytplayer_config = None
         
         print("Buscando ytInitialPlayerResponse en los scripts.")
-        for script in soup.find_all('script'):
+        scripts = soup.find_all('script')
+        print(f"Cantidad de scripts encontrados: {len(scripts)}")
+        
+        for idx, script in enumerate(scripts):
+            print(f"Revisando script {idx + 1}/{len(scripts)}")
             if script.string and 'ytInitialPlayerResponse' in script.string:
                 print("ytInitialPlayerResponse encontrado en un script.")
                 match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script.string)
@@ -366,7 +370,8 @@ def get_video_streams(video_id, proxies=None):
 
         if not yt_initial_player_response:
             print("ytInitialPlayerResponse no encontrado, buscando ytplayer.config.")
-            for script in soup.find_all('script'):
+            for idx, script in enumerate(scripts):
+                print(f"Revisando script {idx + 1}/{len(scripts)}")
                 if script.string and 'ytplayer.config' in script.string:
                     print("ytplayer.config encontrado en un script.")
                     match = re.search(r'ytplayer\.config\s*=\s*({.*?});', script.string)
@@ -387,8 +392,9 @@ def get_video_streams(video_id, proxies=None):
         streaming_data = data['streamingData']
         adaptive_formats = streaming_data.get('adaptiveFormats', [])
         
-        print("Extrayendo URLs de los formatos adaptativos.")
+        print(f"Cantidad de formatos adaptativos encontrados: {len(adaptive_formats)}")
         streams = [fmt['url'] for fmt in adaptive_formats if 'url' in fmt]
+        print(f"Cantidad de streams encontrados: {len(streams)}")
         
         return streams
     
@@ -398,4 +404,3 @@ def get_video_streams(video_id, proxies=None):
 
     finally:
         session.close()
-        
