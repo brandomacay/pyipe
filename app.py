@@ -55,6 +55,9 @@ def extract_video_info(video, language):
     video_id = video.get('videoId', '')
     title = video.get('title', {}).get('runs', [{}])[0].get('text', '')
     channel_name = video.get('longBylineText', {}).get('runs', [{}])[0].get('text', '')
+    if not channel_name:
+        channel_name = video.get('shortBylineText', {}).get('runs', [{}])[0].get('text', '')
+        
     published_time = video.get('publishedTimeText', {}).get('simpleText', '')
     # Traducir la fecha de publicación al idioma especificado
     if language in ["es", "pt"]:
@@ -64,6 +67,11 @@ def extract_video_info(video, language):
     best_thumbnail = max(thumbnails, key=lambda t: t.get('width', 0) * t.get('height', 0))
     best_thumbnail_url = best_thumbnail.get('url', '') if best_thumbnail else ''
     views = video.get('shortViewCountText', {}).get('simpleText', '')
+    if not views:
+        views = video.get('videoInfo', {}).get('runs', [{}])[0].get('text', '')
+    if not published_time:
+        published_time = video.get('videoInfo', {}).get('runs', [{}])[2].get('text', '')
+        
     # Traducir "views" al idioma especificado
     if language in ["es", "pt"]:
         views = translate_time(views, language)
@@ -106,14 +114,10 @@ def search_videos(query, limite, language,search_type):
     response_data = {"data": [], "state": "Error"}
     if videos:
         try:
-            # Filtrar los videos en vivo
-            if "playlist" in search_type:
-                response_data = {"data": list(videos), "state": "OK"}  # Convertir el generador a lista
-            else:
-                filtered_videos = [video for video in videos if not is_live(video)]
-                # Extraer la información de los videos y reducirla
-                reduced_data = [extract_video_info(video, language) for video in filtered_videos]
-                response_data = {"data": reduced_data, "state": "OK"}
+            filtered_videos = [video for video in videos if not is_live(video)]
+            # Extraer la información de los videos y reducirla
+             reduced_data = [extract_video_info(video, language) for video in filtered_videos]
+             response_data = {"data": reduced_data, "state": "OK"}
                 
         except Exception as e:
             print(f"Error processing videos: {e}")
