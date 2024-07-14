@@ -346,20 +346,29 @@ def get_video_streams(video_id):
         response = session.get(url, headers=headers)
         response.raise_for_status()
 
+        print(f"Obteniendo HTML de {url}")
+
         soup = BeautifulSoup(response.content, 'html.parser')
 
         # Buscar el JSON con la información de reproducción
         scripts = soup.find_all('script')
-        for script in scripts:
+        print(f"Cantidad de scripts encontrados: {len(scripts)}")
+
+        for idx, script in enumerate(scripts, start=1):
+            print(f"Revisando script {idx}/{len(scripts)}")
             if script.string:
                 match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script.string)
                 if match:
+                    print("ytInitialPlayerResponse encontrado en un script.")
                     player_response = json.loads(match.group(1))
                     streaming_data = player_response['streamingData']
+                    formats = streaming_data.get('formats', [])
                     adaptive_formats = streaming_data.get('adaptiveFormats', [])
 
                     # Extraer las URLs de los streams
-                    streams = [fmt['url'] for fmt in adaptive_formats if 'url' in fmt]
+                    streams = [fmt['url'] for fmt in formats] + [fmt['url'] for fmt in adaptive_formats]
+                    print(f"Cantidad de streams encontrados: {len(streams)}")
+
                     return streams
 
         raise ValueError("No se encontró el JSON de ytInitialPlayerResponse en la página.")
