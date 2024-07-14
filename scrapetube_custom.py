@@ -335,44 +335,30 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
 def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
     
-def get_video_streams(video_id):
-    try:
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
+def get_video_streams(id: str, proxies: dict = None) -> Generator[str, None, None]:
+    url = f"https://www.youtube.com/watch?v={id}"
+    session = get_session(proxies)
+    html = session.get(url).text
+    soup = BeautifulSoup(html, 'html.parser')
+    scripts = soup.find_all('script')
+    streams = []
 
-        session = requests.Session()
-        response = session.get(url, headers=headers)
-        response.raise_for_status()
+    for script in scripts:
+        if 'adaptiveFormats' in str(script):
+            start = str(script).index('"adaptiveFormats"')
+            end = str(script).index(']', start) + 1
+            json_data_str = str(script)[start:end]
+            
+            # Print the JSON data string to debug
+            print("JSON data string:", json_data_str)
 
-        print(f"Obteniendo HTML de {url}")
+            try:
+                json_data = json.loads(json_data_str)
+                for fmt in json_data:
+                    if 'url' in fmt:
+                        streams.append(fmt['url'])
+            except json.JSONDecodeError as e:
+                print("JSON decoding error:", e)
 
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        # Buscar el JSON con la información de reproducción
-        scripts = soup.find_all('script')
-        print(f"Cantidad de scripts encontrados: {len(scripts)}")
-
-        for idx, script in enumerate(scripts, start=1):
-            print(f"Revisando script {idx}/{len(scripts)}")
-            if script.string:
-                match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script.string)
-                if match:
-                    print("ytInitialPlayerResponse encontrado en un script.")
-                    player_response = json.loads(match.group(1))
-                    streaming_data = player_response['streamingData']
-                    formats = streaming_data.get('formats', [])
-                    adaptive_formats = streaming_data.get('adaptiveFormats', [])
-
-                    # Extraer las URLs de los streams
-                    streams = [fmt['url'] for fmt in formats] + [fmt['url'] for fmt in adaptive_formats]
-                    print(f"Cantidad de streams encontrados: {len(streams)}")
-
-                    return streams
-
-        raise ValueError("No se encontró el JSON de ytInitialPlayerResponse en la página.")
-
-    except (requests.RequestException, ValueError, KeyError, json.JSONDecodeError) as e:
-        print(f"Error al obtener los streams de video: {e}")
-        return []
+    session.close()
+    return streams
