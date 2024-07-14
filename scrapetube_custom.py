@@ -341,12 +341,8 @@ def get_video_streams(video_id):
     
     # Create a requests session
     session = requests.Session()
-    print("debug in:", "sesion")
-    if proxies:
-        session.proxies.update(proxies)
-    
+    print("debug scrape:", "sessioon")
     try:
-        print("debug in:", "try")
         # Get the page content
         response = session.get(url)
         response.raise_for_status()
@@ -369,8 +365,7 @@ def get_video_streams(video_id):
                 
                 # Find the start index of 'adaptiveFormats' JSON data
                 start_index = script_content.find('"adaptiveFormats":')
-                print("debug in start_index:", start_index)
-
+                print("debug start_index:", start_index)
                 if start_index != -1:
                     # Find the end index of 'adaptiveFormats' JSON data
                     end_index = script_content.find('}]', start_index) + 2
@@ -398,6 +393,6 @@ def get_video_streams(video_id):
         return streams
     
     except requests.exceptions.RequestException as e:
-        print(f"HTTP request error: {e}")
+        print(f"HTTP request error:",e)
         return []
         
