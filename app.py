@@ -206,7 +206,7 @@ def get_playlist():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/video', methods=['GET'])
-def get_video():
+def get_streams():
     video_id = request.args.get('video_id')
     if not video_id:
         return jsonify({'error': 'Missing video_id parameter'}), 400
