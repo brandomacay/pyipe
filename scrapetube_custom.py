@@ -3,6 +3,7 @@ import time
 from typing import Generator
 import requests
 from typing_extensions import Literal
+from bs4 import BeautifulSoup
 
 results_type_map = {
     "video": ["B", "videoRenderer"],
@@ -29,13 +30,45 @@ def get_search(
     }
 
     param_string = f"CA{sort_by_map[sort_by]}SAhA{results_type_map[results_type][0]}"
-    url = f"https://www.youtube.com/results?search_query={query}&sp={param_string}"
-    api_endpoint = "https://www.youtube.com/youtubei/v1/search"
-    videos = get_videos(
-        url, api_endpoint, results_type_map[results_type][1], limit, sleep, proxies
-    )
-    for video in videos:
-        yield video
+    if results_type == "music":
+        return get_music_search(query, limit, sleep, sort_by, proxies)
+    else:
+        url = f"https://www.youtube.com/results?search_query={query}&sp={param_string}"
+        api_endpoint = "https://www.youtube.com/youtubei/v1/search"
+        videos = get_videos(
+            url, api_endpoint, results_type_map[results_type][1], limit, sleep, proxies
+        )
+        for video in videos:
+            yield video
+
+
+def get_music_search(query, limit, sleep, sort_by, proxies):
+    sort_by_map = {
+        "relevance": "relevance",
+        "upload_date": "upload_date",
+        "view_count": "view_count",
+        "rating": "rating",
+    }
+
+    url = f"https://music.youtube.com/search?q={query}&sp={sort_by_map[sort_by]}"
+    response = requests.get(url, proxies=proxies)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, "html.parser")
+        videos = soup.find_all("ytmusic-responsive-list-item-renderer")
+        for video in videos[:limit]:
+            video_data = {
+                "videoId": video["video-id"],
+                "title": video.find("span", {"id": "video-title"}).text.strip(),
+                "channel_name": video.find("a", {"id": "avatar-link"}).text.strip(),
+                "publishedTimeText": "",  # Aquí deberías parsear la fecha si está disponible en la página
+                "lengthText": "",  # Aquí deberías parsear la duración si está disponible en la página
+                "thumbnail": video.find("img", {"id": "avatar"})["src"],
+                "shortViewCountText": "",  # Aquí deberías parsear las vistas si están disponibles en la página
+                "detailedMetadataSnippets": "",  # Aquí deberías parsear la descripción si está disponible en la página
+                "richThumbnail": {"movingThumbnailRenderer": {"movingThumbnailDetails": {"thumbnails": [{"url": ""}]}}},
+                "channelThumbnailSupportedRenderers": {"channelThumbnailWithLinkRenderer": {"thumbnail": {"thumbnails": [{"url": ""}]}}},
+            }
+            yield video_data
 
 
 def get_videos(
