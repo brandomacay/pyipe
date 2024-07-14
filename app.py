@@ -97,7 +97,7 @@ def is_live(video):
 
 def search_videos(query, limite, language,search_type):
     # Obtener la lista de videos
-    videos = none
+    videos = []
     if "playlist" in search_type:
         videos = scrapetube.get_playlist(query)
     else:
