@@ -4,6 +4,7 @@ from typing import Generator
 
 import requests
 from typing_extensions import Literal
+from bs4 import BeautifulSoup
 
 type_property_map = {
     "videos": "videoRenderer",
