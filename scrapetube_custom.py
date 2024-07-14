@@ -10,7 +10,7 @@ results_type_map = {
     "channel": ["C", "channelRenderer"],
     "playlist": ["D", "playlistRenderer"],
     "movie": ["E", "videoRenderer"],
-    "music": ["F", "videoRenderer"],  # Added music
+    "music": ["F", "musicVideoRenderer"],  # Adjusted for music videos
 }
 
 def get_search(
@@ -30,8 +30,8 @@ def get_search(
     }
 
     param_string = f"CA{sort_by_map[sort_by]}SAhA{results_type_map[results_type][0]}"
-    if results_type == "music":
-        return get_music_search(query, limit, sleep, sort_by, proxies)
+    if results_type in ["playlist", "music"]:
+        return get_playlist_or_music_search(query, limit, sleep, sort_by, proxies, results_type_map[results_type][1])
     else:
         url = f"https://www.youtube.com/results?search_query={query}&sp={param_string}"
         api_endpoint = "https://www.youtube.com/youtubei/v1/search"
@@ -42,7 +42,7 @@ def get_search(
             yield video
 
 
-def get_music_search(query, limit, sleep, sort_by, proxies):
+def get_playlist_or_music_search(query, limit, sleep, sort_by, proxies, selector):
     sort_by_map = {
         "relevance": "relevance",
         "upload_date": "upload_date",
@@ -50,23 +50,20 @@ def get_music_search(query, limit, sleep, sort_by, proxies):
         "rating": "rating",
     }
 
-    url = f"https://music.youtube.com/search?q={query}&sp={sort_by_map[sort_by]}"
+    url = f"https://www.youtube.com/results?search_query={query}&sp=EgIQAQ%253D%253D"  # Music filter
     response = requests.get(url, proxies=proxies)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, "html.parser")
-        videos = soup.find_all("ytmusic-responsive-list-item-renderer")
-        for video in videos[:limit]:
+        items = soup.find_all("ytd-video-renderer")
+        for item in items[:limit]:
             video_data = {
-                "videoId": video["video-id"],
-                "title": video.find("span", {"id": "video-title"}).text.strip(),
-                "channel_name": video.find("a", {"id": "avatar-link"}).text.strip(),
-                "publishedTimeText": "",  # Aquí deberías parsear la fecha si está disponible en la página
-                "lengthText": "",  # Aquí deberías parsear la duración si está disponible en la página
-                "thumbnail": video.find("img", {"id": "avatar"})["src"],
-                "shortViewCountText": "",  # Aquí deberías parsear las vistas si están disponibles en la página
-                "detailedMetadataSnippets": "",  # Aquí deberías parsear la descripción si está disponible en la página
-                "richThumbnail": {"movingThumbnailRenderer": {"movingThumbnailDetails": {"thumbnails": [{"url": ""}]}}},
-                "channelThumbnailSupportedRenderers": {"channelThumbnailWithLinkRenderer": {"thumbnail": {"thumbnails": [{"url": ""}]}}},
+                "videoId": item.find("a", class_="yt-simple-endpoint style-scope ytd-video-renderer")["href"].split("=", 1)[1],
+                "title": item.find("yt-formatted-string", class_="style-scope ytd-video-renderer").text.strip(),
+                "channel_name": item.find("yt-formatted-string", class_="style-scope ytd-channel-name complex-string").text.strip(),
+                "published_time": item.find("yt-formatted-string", class_="style-scope ytd-video-renderer").text.strip(),
+                "views": item.find("span", class_="style-scope ytd-video-meta-block").text.strip(),
+                "thumbnail": item.find("img", class_="style-scope yt-img-shadow")["src"],
+                "description": item.find("yt-formatted-string", class_="style-scope ytd-video-renderer").text.strip(),
             }
             yield video_data
 
