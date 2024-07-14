@@ -5,6 +5,7 @@ import sys
 import json
 from urllib.parse import parse_qs
 import scrapetube_custom as scrapetube
+import YouTubeVideoExtractor as YouTubeVideoExtractor
 import requests
 from bs4 import BeautifulSoup
 import yt_dlp
@@ -220,9 +221,14 @@ def get_streams():
 
     # Llamar a la función get_video_streams para obtener las URLs de los streams
     try:
-        videoss = scrapetube.get_video_streams(video_id)  # Aquí obtienes el video usando scrapetube
-        app.logger.info(f'Video obtenido: {videoss}')  # Registrar la respuesta antes de convertirla a JSON
-        response_data = {"links": videoss, "state": "OK"}
+        extractor = YouTubeVideoExtractor(video_url)
+        extractor.extract_video_streams()
+        for itag, stream in extractor.streams.items():
+            print(f"itag: {itag}, url: {stream['url']}, quality: {stream['quality']}, type: {stream['type']}, container: {stream['container']}")
+            app.logger.info(f'Video obtenido: {stream['container']}')
+        
+       # videoss = scrapetube.get_video_streams(video_id)  # Aquí obtienes el video usando scrapetube
+        response_data = {"links":  extractor.streams, "state": "OK"}
         return jsonify(response_data)
 
     except Exception as e:
