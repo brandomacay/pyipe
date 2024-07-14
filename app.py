@@ -225,7 +225,7 @@ def get_streams():
         extractor.extract_video_streams()
         for itag, stream in extractor.streams.items():
             print(f"itag: {itag}, url: {stream['url']}, quality: {stream['quality']}, type: {stream['type']}, container: {stream['container']}")
-            app.logger.info(f'Video obtenido: {stream['container']}')
+            app.logger.info(f'Video obtenido:', f"itag: {itag}, url: {stream['url']}, quality: {stream['quality']}, type: {stream['type']}, container: {stream['container']}")
         
        # videoss = scrapetube.get_video_streams(video_id)  # Aquí obtienes el video usando scrapetube
         response_data = {"links":  extractor.streams, "state": "OK"}
