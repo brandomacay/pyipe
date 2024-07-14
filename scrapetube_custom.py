@@ -336,56 +336,59 @@ def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
     
 def get_video_streams(video_id, proxies=None):
-    # Definir la URL del video
     url = f"https://www.youtube.com/watch?v={video_id}"
-    
-    # Crear una sesión de requests
-    sesion = requests.Session()
+    session = requests.Session()
     
     if proxies:
-        sesion.proxies.update(proxies)
+        session.proxies.update(proxies)
     
     try:
-        # Obtener el contenido de la página
-        respuesta = sesion.get(url)
-        respuesta.raise_for_status()
-        html = respuesta.text
+        response = session.get(url)
+        response.raise_for_status()
+        html = response.text
         
-        # Parsear el contenido HTML
-        sopa = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, 'html.parser')
         
-        # Buscar el script que contiene 'ytInitialPlayerResponse'
-        script_content = None
-        for script in sopa.find_all('script'):
+        yt_initial_player_response = None
+        ytplayer_config = None
+        
+        # Buscar el script que contiene ytInitialPlayerResponse
+        for script in soup.find_all('script'):
             if script.string and 'ytInitialPlayerResponse' in script.string:
-                script_content = script.string
-                break
+                match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script.string)
+                if match:
+                    yt_initial_player_response = match.group(1)
+                    break
+
+        # Si no se encuentra ytInitialPlayerResponse, buscar ytplayer.config
+        if not yt_initial_player_response:
+            for script in soup.find_all('script'):
+                if script.string and 'ytplayer.config' in script.string:
+                    match = re.search(r'ytplayer\.config\s*=\s*({.*?});', script.string)
+                    if match:
+                        ytplayer_config = match.group(1)
+                        break
+
+        # Si se encontró ytplayer.config, extraer ytInitialPlayerResponse de él
+        if ytplayer_config:
+            ytplayer_config_json = json.loads(ytplayer_config)
+            yt_initial_player_response = json.dumps(ytplayer_config_json.get('args', {}).get('player_response', {}))
+
+        if not yt_initial_player_response:
+            raise ValueError("ytInitialPlayerResponse not found in the HTML")
         
-        if script_content:
-            # Extraer el JSON del contenido del script
-            json_data_match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script_content)
-            if json_data_match:
-                json_data_str = json_data_match.group(1)
-                
-                # Decodificar los datos JSON
-                try:
-                    datos_json = json.loads(json_data_str)
-                    
-                    # Extraer los enlaces de los formatos adaptativos
-                    formatos = datos_json['streamingData']['adaptiveFormats']
-                    enlaces = [formato['url'] for formato in formatos if 'url' in formato]
-                    
-                    return enlaces
-                
-                except json.JSONDecodeError as e:
-                    print("Error al decodificar JSON:", e)
+        data = json.loads(yt_initial_player_response)
+        streaming_data = data['streamingData']
+        adaptive_formats = streaming_data.get('adaptiveFormats', [])
         
-        # Cerrar la sesión
-        sesion.close()
+        streams = [fmt['url'] for fmt in adaptive_formats if 'url' in fmt]
         
-        return []
+        return streams
     
-    except requests.exceptions.RequestException as e:
-        print(f"Error en la solicitud HTTP: {e}")
+    except (requests.RequestException, ValueError, KeyError, json.JSONDecodeError) as e:
+        print(f"Error al obtener los streams: {e}")
         return []
+
+    finally:
+        session.close()
         
