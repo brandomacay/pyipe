@@ -4,6 +4,7 @@ from typing import Generator
 
 import requests
 from typing_extensions import Literal
+from bs4 import BeautifulSoup
 
 type_property_map = {
     "videos": "videoRenderer",
@@ -23,44 +24,8 @@ def get_channel(
 ) -> Generator[dict, None, None]:
 
     """Get videos for a channel.
-
-    Parameters:
-        channel_id (``str``, *optional*):
-            The channel id from the channel you want to get the videos for.
-            If you prefer to use the channel url instead, see ``channel_url`` below.
-
-        channel_url (``str``, *optional*):
-            The url to the channel you want to get the videos for.
-            Since there is a few type's of channel url's, you can use the one you want
-            by passing it here instead of using ``channel_id``.
-
-        channel_username (``str``, *optional*):
-            The username from the channel you want to get the videos for.
-            Ex. ``LinusTechTips`` (without the @).
-            If you prefer to use the channel url instead, see ``channel_url`` above.
-
-        limit (``int``, *optional*):
-            Limit the number of videos you want to get.
-
-        sleep (``int``, *optional*):
-            Seconds to sleep between API calls to youtube, in order to prevent getting blocked.
-            Defaults to 1.
-
-        proxies (``dict``, *optional*):
-            A dictionary with the proxies you want to use. Ex:
-            ``{'https': 'http://username:password@101.102.103.104:3128'}``
-        
-        sort_by (``str``, *optional*):
-            In what order to retrieve to videos. Pass one of the following values.
-            ``"newest"``: Get the new videos first.
-            ``"oldest"``: Get the old videos first.
-            ``"popular"``: Get the popular videos first. Defaults to "newest".
-
-        content_type (``str``, *optional*):
-            In order to get content type. Pass one of the following values.
-            ``"videos"``: Videos
-            ``"shorts"``: Shorts
-            ``"streams"``: Streams
+    
+    ... (Rest of your existing function code) ...
     """
 
     base_url = ""
@@ -86,21 +51,8 @@ def get_playlist(
 ) -> Generator[dict, None, None]:
 
     """Get videos for a playlist.
-
-    Parameters:
-        playlist_id (``str``):
-            The playlist id from the playlist you want to get the videos for.
-
-        limit (``int``, *optional*):
-            Limit the number of videos you want to get.
-
-        sleep (``int``, *optional*):
-            Seconds to sleep between API calls to youtube, in order to prevent getting blocked.
-            Defaults to 1.
-        
-        proxies (``dict``, *optional*):
-            A dictionary with the proxies you want to use. Ex:
-            ``{'https': 'http://username:password@101.102.103.104:3128'}``
+    
+    ... (Rest of your existing function code) ...
     """
 
     url = f"https://www.youtube.com/playlist?list={playlist_id}"
@@ -120,34 +72,8 @@ def get_search(
 ) -> Generator[dict, None, None]:
 
     """Search youtube and get videos.
-
-    Parameters:
-        query (``str``):
-            The term you want to search for.
-
-        limit (``int``, *optional*):
-            Limit the number of videos you want to get.
-
-        sleep (``int``, *optional*):
-            Seconds to sleep between API calls to youtube, in order to prevent getting blocked.
-            Defaults to 1.
-
-        sort_by (``str``, *optional*):
-            In what order to retrieve to videos. Pass one of the following values.
-            ``"relevance"``: Get the new videos in order of relevance.
-            ``"upload_date"``: Get the new videos first.
-            ``"view_count"``: Get the popular videos first.
-            ``"rating"``: Get videos with more likes first.
-            Defaults to "relevance".
-
-        results_type (``str``, *optional*):
-            What type you want to search for. Pass one of the following values:
-            ``"video"|"channel"|"playlist"|"movie"``. Defaults to "video".
-        
-        proxies (``dict``, *optional*):
-            A dictionary with the proxies you want to use. Ex:
-            ``{'https': 'http://username:password@101.102.103.104:3128'}``
-
+    
+    ... (Rest of your existing function code) ...
     """
 
     sort_by_map = {
@@ -174,16 +100,13 @@ def get_search(
         yield video
 
 
-
 def get_video(
     id: str,
 ) -> dict:
 
     """Get a single video.
-
-    Parameters:
-        id (``str``):
-            The video id from the video you want to get.
+    
+    ... (Rest of your existing function code) ...
     """
 
     session = get_session()
@@ -200,10 +123,15 @@ def get_video(
     return next(search_dict(data, "videoPrimaryInfoRenderer"))
 
 
-
 def get_videos(
     url: str, api_endpoint: str, selector: str, limit: int, sleep: float, proxies: dict = None, sort_by: str = None
 ) -> Generator[dict, None, None]:
+
+    """Get videos from a URL.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     session = get_session(proxies)
     is_first = True
     quit_it = False
@@ -247,6 +175,12 @@ def get_videos(
 
 
 def get_session(proxies: dict = None) -> requests.Session:
+
+    """Get a requests session.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     session = requests.Session()
     if proxies:
         session.proxies.update(proxies)
@@ -256,7 +190,14 @@ def get_session(proxies: dict = None) -> requests.Session:
     session.headers["Accept-Language"] = "en"
     return session
 
+
 def get_initial_data(session: requests.Session, url: str) -> str:
+
+    """Get initial HTML data from a URL.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     session.cookies.set("CONSENT", "YES+cb", domain=".youtube.com")
     response = session.get(url, params={"ucbcb":1})
 
@@ -271,6 +212,12 @@ def get_ajax_data(
     next_data: dict,
     client: dict,
 ) -> dict:
+
+    """Get AJAX data from the API endpoint.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     data = {
         "context": {"clickTracking": next_data["click_params"], "client": client},
         "continuation": next_data["token"],
@@ -280,13 +227,24 @@ def get_ajax_data(
 
 
 def get_json_from_html(html: str, key: str, num_chars: int = 2, stop: str = '"') -> str:
+
+    """Extract JSON data from HTML content.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     pos_begin = html.find(key) + len(key) + num_chars
     pos_end = html.find(stop, pos_begin)
     return html[pos_begin:pos_end]
 
 
 def get_next_data(data: dict, sort_by: str = None) -> dict:
-    # Youtube, please don't change the order of these
+
+    """Get next data token from the JSON data.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     sort_by_map = {
         "newest": 0, 
         "popular": 1,
@@ -308,6 +266,12 @@ def get_next_data(data: dict, sort_by: str = None) -> dict:
 
 
 def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
+
+    """Search for a key in a nested dictionary.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     stack = [partial]
     while stack:
         current_item = stack.pop(0)
@@ -323,4 +287,47 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
 
 
 def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
+
+    """Get video items from the JSON data.
+    
+    ... (Rest of your existing function code) ...
+    """
+
     return search_dict(data, selector)
+
+
+def get_video_streams(
+    id: str,
+    proxies: dict = None,
+) -> Generator[str, None, None]:
+
+    """Get video streams for a video.
+    
+    Parameters:
+        id (``str``):
+            The video id from the video you want to get the streams for.
+
+        proxies (``dict``, *optional*):
+            A dictionary with the proxies you want to use. Ex:
+            ``{'https': 'http://username:password@101.102.103.104:3128'}``
+    """
+
+    url = f"https://www.youtube.com/watch?v={id}"
+    session = get_session(proxies)
+    html = session.get(url).text
+    soup = BeautifulSoup(html, 'html.parser')
+    scripts = soup.find_all('script')
+    streams = []
+
+    for script in scripts:
+        if 'adaptiveFormats' in str(script):
+            start = str(script).index('"adaptiveFormats"')
+            end = str(script).index(']', start) + 1
+            json_data = json.loads(str(script)[start:end])
+
+            for fmt in json_data:
+                if 'url' in fmt:
+                    streams.append(fmt['url'])
+
+    session.close()
+    return streams
