@@ -216,6 +216,7 @@ def get_playlist():
 @app.route('/video', methods=['GET'])
 def get_streams():
     video_id = request.args.get('video_id')
+    video_url = "https://www.youtube.com/watch?v="+video_id
     if not video_id:
         return jsonify({'error': 'Missing video_id parameter'}), 400
 
