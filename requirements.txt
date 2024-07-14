@@ -3,4 +3,5 @@ werkzeug==2.0.3
 requests==2.27.1
 gunicorn
 yt_dlp
+scrapetube
 git+https://github.com/alexmercerind/youtube-search-python.git
