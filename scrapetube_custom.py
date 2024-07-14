@@ -326,7 +326,7 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
 def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
 
-def get_video_streams(id: str, proxies: dict = None) -> List[str]:
+def get_video_streams(id: str, proxies: dict = None) -> Generator[str, None, None]:
     url = f"https://www.youtube.com/watch?v={id}"
     session = requests.Session()
 
