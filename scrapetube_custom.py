@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 import re
 import requests
 from typing_extensions import Literal
+import urllib.parse
 
 type_property_map = {
     "videos": "videoRenderer",
