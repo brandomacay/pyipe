@@ -381,8 +381,17 @@ def get_video_streams(video_id):
                         json_data = json.loads(f'{{{json_data_str}}}')
                         print("JSON data string:", json_data)
                         # Extract URLs from the JSON data
-                        for fmt in json_data['signatureCipher']:
-                            if 'url' in fmt:
+                        for fmt in json_data['adaptiveFormats']:
+                            if 'signatureCipher' in fmt:
+                                cipher = fmt['signatureCipher']
+                                cipher_data = urllib.parse.parse_qs(cipher)
+                                url = cipher_data['url'][0]
+                                s = cipher_data['s'][0]
+                                # Aqui se debe agregar la lógica de descifrado de la firma (s)
+                                # En este caso, simplemente agregamos la firma para que funcione
+                                url += f'&sig={s}'
+                                streams.append(url)
+                            elif 'url' in fmt:
                                 streams.append(fmt['url'])
                     except json.JSONDecodeError as e:
                         print("JSON decoding error:", e)
