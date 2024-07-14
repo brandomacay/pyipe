@@ -108,7 +108,7 @@ def search_videos(query, limite, language,search_type):
         try:
             # Filtrar los videos en vivo
             if "playlist" in search_type:
-                response_data = {"data": videos, "state": "OK"}
+                response_data = {"data": list(videos), "state": "OK"}  # Convertir el generador a lista
             else:
                 filtered_videos = [video for video in videos if not is_live(video)]
                 # Extraer la información de los videos y reducirla
