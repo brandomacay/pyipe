@@ -336,6 +336,7 @@ def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
     
 def get_video_streams(video_id, proxies=None):
+    print("Iniciando el proceso para obtener los streams del video.")
     url = f"https://www.youtube.com/watch?v={video_id}"
     session = requests.Session()
     
@@ -343,44 +344,50 @@ def get_video_streams(video_id, proxies=None):
         session.proxies.update(proxies)
     
     try:
+        print(f"Obteniendo HTML de {url}")
         response = session.get(url)
         response.raise_for_status()
         html = response.text
+        print("HTML obtenido con éxito.")
         
         soup = BeautifulSoup(html, 'html.parser')
         
         yt_initial_player_response = None
         ytplayer_config = None
         
-        # Buscar el script que contiene ytInitialPlayerResponse
+        print("Buscando ytInitialPlayerResponse en los scripts.")
         for script in soup.find_all('script'):
             if script.string and 'ytInitialPlayerResponse' in script.string:
+                print("ytInitialPlayerResponse encontrado en un script.")
                 match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script.string)
                 if match:
                     yt_initial_player_response = match.group(1)
                     break
 
-        # Si no se encuentra ytInitialPlayerResponse, buscar ytplayer.config
         if not yt_initial_player_response:
+            print("ytInitialPlayerResponse no encontrado, buscando ytplayer.config.")
             for script in soup.find_all('script'):
                 if script.string and 'ytplayer.config' in script.string:
+                    print("ytplayer.config encontrado en un script.")
                     match = re.search(r'ytplayer\.config\s*=\s*({.*?});', script.string)
                     if match:
                         ytplayer_config = match.group(1)
                         break
 
-        # Si se encontró ytplayer.config, extraer ytInitialPlayerResponse de él
         if ytplayer_config:
+            print("Extrayendo ytInitialPlayerResponse de ytplayer.config.")
             ytplayer_config_json = json.loads(ytplayer_config)
             yt_initial_player_response = json.dumps(ytplayer_config_json.get('args', {}).get('player_response', {}))
 
         if not yt_initial_player_response:
-            raise ValueError("ytInitialPlayerResponse not found in the HTML")
+            raise ValueError("ytInitialPlayerResponse no encontrado en el HTML.")
         
+        print("ytInitialPlayerResponse encontrado, procesando JSON.")
         data = json.loads(yt_initial_player_response)
         streaming_data = data['streamingData']
         adaptive_formats = streaming_data.get('adaptiveFormats', [])
         
+        print("Extrayendo URLs de los formatos adaptativos.")
         streams = [fmt['url'] for fmt in adaptive_formats if 'url' in fmt]
         
         return streams
