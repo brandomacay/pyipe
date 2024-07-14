@@ -107,10 +107,14 @@ def search_videos(query, limite, language,search_type):
     if videos:
         try:
             # Filtrar los videos en vivo
-            filtered_videos = [video for video in videos if not is_live(video)]
-            # Extraer la información de los videos y reducirla
-            reduced_data = [extract_video_info(video, language) for video in filtered_videos]
-            response_data = {"data": reduced_data, "state": "OK"}
+            if "playlist" in search_type:
+                response_data = videos
+            else:
+                filtered_videos = [video for video in videos if not is_live(video)]
+                # Extraer la información de los videos y reducirla
+                reduced_data = [extract_video_info(video, language) for video in filtered_videos]
+                response_data = {"data": reduced_data, "state": "OK"}
+                
         except Exception as e:
             print(f"Error processing videos: {e}")
     return response_data
