@@ -335,72 +335,35 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
 def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
     
-def get_video_streams(video_id, proxies=None):
-    print("Iniciando el proceso para obtener los streams del video.")
-    url = f"https://www.youtube.com/watch?v={video_id}"
-    session = requests.Session()
-    
-    if proxies:
-        session.proxies.update(proxies)
-    
+def get_video_streams(video_id):
     try:
-        print(f"Obteniendo HTML de {url}")
-        response = session.get(url)
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+
+        session = requests.Session()
+        response = session.get(url, headers=headers)
         response.raise_for_status()
-        html = response.text
-        print("HTML obtenido con éxito.")
-        
-        soup = BeautifulSoup(html, 'html.parser')
-        
-        yt_initial_player_response = None
-        ytplayer_config = None
-        
-        print("Buscando ytInitialPlayerResponse en los scripts.")
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Buscar el JSON con la información de reproducción
         scripts = soup.find_all('script')
-        print(f"Cantidad de scripts encontrados: {len(scripts)}")
-        
-        for idx, script in enumerate(scripts):
-            print(f"Revisando script {idx + 1}/{len(scripts)}")
-            if script.string and 'ytInitialPlayerResponse' in script.string:
-                print("ytInitialPlayerResponse encontrado en un script.")
+        for script in scripts:
+            if script.string:
                 match = re.search(r'ytInitialPlayerResponse\s*=\s*({.*?});', script.string)
                 if match:
-                    yt_initial_player_response = match.group(1)
-                    break
+                    player_response = json.loads(match.group(1))
+                    streaming_data = player_response['streamingData']
+                    adaptive_formats = streaming_data.get('adaptiveFormats', [])
 
-        if not yt_initial_player_response:
-            print("ytInitialPlayerResponse no encontrado, buscando ytplayer.config.")
-            for idx, script in enumerate(scripts):
-                print(f"Revisando script {idx + 1}/{len(scripts)}")
-                if script.string and 'ytplayer.config' in script.string:
-                    print("ytplayer.config encontrado en un script.")
-                    match = re.search(r'ytplayer\.config\s*=\s*({.*?});', script.string)
-                    if match:
-                        ytplayer_config = match.group(1)
-                        break
+                    # Extraer las URLs de los streams
+                    streams = [fmt['url'] for fmt in adaptive_formats if 'url' in fmt]
+                    return streams
 
-        if ytplayer_config:
-            print("Extrayendo ytInitialPlayerResponse de ytplayer.config.")
-            ytplayer_config_json = json.loads(ytplayer_config)
-            yt_initial_player_response = json.dumps(ytplayer_config_json.get('args', {}).get('player_response', {}))
+        raise ValueError("No se encontró el JSON de ytInitialPlayerResponse en la página.")
 
-        if not yt_initial_player_response:
-            raise ValueError("ytInitialPlayerResponse no encontrado en el HTML.")
-        
-        print("ytInitialPlayerResponse encontrado, procesando JSON.")
-        data = json.loads(yt_initial_player_response)
-        streaming_data = data['streamingData']
-        adaptive_formats = streaming_data.get('adaptiveFormats', [])
-        
-        print(f"Cantidad de formatos adaptativos encontrados: {len(adaptive_formats)}")
-        streams = [fmt['url'] for fmt in adaptive_formats if 'url' in fmt]
-        print(f"Cantidad de streams encontrados: {len(streams)}")
-        
-        return streams
-    
     except (requests.RequestException, ValueError, KeyError, json.JSONDecodeError) as e:
-        print(f"Error al obtener los streams: {e}")
+        print(f"Error al obtener los streams de video: {e}")
         return []
-
-    finally:
-        session.close()
