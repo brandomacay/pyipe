@@ -3,7 +3,6 @@ from youtubesearchpython import *
 import os
 import sys
 import json
-from urllib.parse import parse_qs
 import scrapetube_custom as scrapetube
 import video_extractor as YouTubeVideoExtractor
 import requests
@@ -219,7 +218,7 @@ def get_playlist():
 def get_streams():
     video_id = request.args.get('video_id')
     #video_url = "https://www.youtube.com/watch?v="+video_id
-    URL = f'https://www.youtube.com/watch?v='+video_id
+    URL = f'https://www.youtube.com/watch?v={video_id}'
     low_quality_opts = {'format': 'bestvideo[height<=360]+bestaudio/best[height<=360]', 'ignoreerrors': True}
     high_quality_opts = {'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]', 'ignoreerrors': True}
 
@@ -228,16 +227,16 @@ def get_streams():
                 'simulate': True,  # Evita la descarga del video
                 'getthumbnail': True,  # Obtiene el enlace del thumbnail
                 'quiet': True
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(URL, download=False)
+            video_info = {
+                'title': info.get('title', 'N/A'),
+                'channel': info.get('uploader', 'N/A'),
+                'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
+                'thumbnail': info.get('thumbnail', 'N/A'),
             }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(URL, download=False)
-                video_info = {
-                    'title': info.get('title', 'N/A'),
-                    'channel': info.get('uploader', 'N/A'),
-                    'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
-                    'thumbnail': info.get('thumbnail', 'N/A'),
-                }
-                return jsonify(video_info)
+            return jsonify(video_info)
     except Exception as e:
         return jsonify({'error': str(e)})
 
