@@ -113,28 +113,26 @@ def is_live(video):
     return False
 
 def search_videos(query, limite, language, search_type):
-    # Obtener la lista de videos
-    videos = []
-    if "playlist" in search_type:
-        videos = get_playlist(query)
-    else:
-        videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
-    # Convertir la lista de videos a formato JSON
-    if videos:
-        try:
+    try:
+        if "playlist" in search_type:
+            videos = get_playlist(query)
+        else:
+            videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
+
+        if videos:
             # Filtrar los videos en vivo
             filtered_videos = [video for video in videos if not is_live(video)]
             # Extraer la información de los videos y reducirla
             reduced_data = [extract_video_info(video, language) for video in filtered_videos]
             response_data = {"data": reduced_data, "state": "OK"}
-        except Exception as e:
-            print(f"Error processing videos: {e}")
+        else:
             response_data = {"data": [], "state": "Error"}
-    else:
+    except Exception as e:
+        print(f"Error processing videos: {e}")
         response_data = {"data": [], "state": "Error"}
 
     return json.dumps(response_data)
-
+    
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
     response = requests.get(url)
@@ -181,20 +179,25 @@ def index():
 @app.route('/search', methods=['GET'])
 def search():
     query = request.args.get('txt_query')
-    search_type = request.args.get('type', 'videos')  # Tipo de búsqueda: all, videos, channels, playlists, custom
+    search_type = request.args.get('type', 'videos')
     limit = int(request.args.get('limit', 10))
     language = request.args.get('language', 'en')
     region = request.args.get('region', 'US')
     page = int(request.args.get('page', 1))
-    sort_order = request.args.get('sort_order', None)  # Para búsquedas personalizadas
+    sort_order = request.args.get('sort_order', None)
 
     if not query:
         return jsonify({'error': 'Parámetro de consulta "query" requerido'}), 400
 
     try:
-        response = search_videos(query, limit, language, search_type)
-        print("debug result:", response)
-        return jsonify({'data': json.loads(response)})
+        if query:
+            # Realizar la búsqueda de videos y devolver los resultados
+            response = search_videos(query, limit, language, search_type)
+            response_data = json.loads(response)
+            print("debug result:", response_data)
+            return jsonify(response_data)
+        else:
+            return jsonify({'error': 'Please provide a valid text parameter.'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
