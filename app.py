@@ -128,7 +128,7 @@ def search_videos(query, limite, language,search_type):
             response_data = {"data": reduced_data, "state": "OK"}
         except Exception as e:
             print(f"Error processing videos: {e}")
-    return json.dumps(response_data)
+return json.dumps(response_data)
     
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
