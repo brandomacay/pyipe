@@ -351,7 +351,7 @@ def get_video_streams(video_id):
                 start_index = script_content.find('"adaptiveFormats":')
                 if start_index != -1:
                     # Find the end index of 'adaptiveFormats' JSON data
-                    end_index = script_content.find('}]', start_index) + 2
+                    end_index = script_content.find(']', start_index) + 1
                     
                     # Extract the JSON data string
                     json_data_str = script_content[start_index:end_index]
@@ -362,14 +362,16 @@ def get_video_streams(video_id):
                     # Decode the JSON data
                     try:
                         json_data = json.loads(f'{{{json_data_str}}}')
+                        adaptive_formats = json_data.get('adaptiveFormats', [])
+                        
                         # Extract URLs from the JSON data
-                        for fmt in json_data['adaptiveFormats']:
+                        for fmt in adaptive_formats:
                             if 'signatureCipher' in fmt:
                                 cipher = fmt['signatureCipher']
                                 cipher_data = urllib.parse.parse_qs(cipher)
                                 url = cipher_data['url'][0]
                                 s = cipher_data['s'][0]
-                                # Aqui se debe agregar la lógica de descifrado de la firma (s)
+                                # Aquí se debe agregar la lógica de descifrado de la firma (s)
                                 # En este caso, simplemente agregamos la firma para que funcione
                                 url += f'&sig={s}'
                                 streams.append(url)
