@@ -112,13 +112,14 @@ def is_live(video):
                 return True
     return False
 
-def search_videos(query, limite, language, search_type):
+def search_videos(query, limite, language, search_type, page):
     try:
         if "playlist" in search_type:
             videos = get_playlist(query)
         else:
-            videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
-
+            # Ejemplo de paginación, ajusta según la API de scrapetube
+            videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video", page=page)
+        
         if videos:
             # Filtrar los videos en vivo
             filtered_videos = [video for video in videos if not is_live(video)]
@@ -129,7 +130,7 @@ def search_videos(query, limite, language, search_type):
             response_data = {"data": [], "state": "Error"}
     except Exception as e:
         print(f"Error processing videos: {e}")
-        app.logger.error(f"Error processing videos search: {e}")  # Registra el error con el logger de Flask     
+        app.logger.error(f"Error processing videos search: {e}")  # Registra el error con el logger de Flask
         response_data = {"data": [], "state": "Error"}
 
     return json.dumps(response_data)
@@ -193,7 +194,7 @@ def search():
     try:
         if query:
             # Realizar la búsqueda de videos y devolver los resultados
-            response = search_videos(query, limit, language, search_type)
+            response = search_videos(query, limit, language, search_type, 1)
             response_data = json.loads(response)
             print("debug result:", response_data)
             return jsonify(response_data)
