@@ -223,7 +223,7 @@ def get_streams():
 
     # Llamar a la función get_video_streams para obtener las URLs de los streams
     try:
-        videoss = scrapetube.get_video_streams(video_id)  # Aquí obtienes el video usando scrapetube
+        videoss = [scrapetube.get_video_streams(video_id)]  # Aquí obtienes el video usando scrapetube
         response_data = {"links":  videoss, "state": "OK"}
         return jsonify(response_data)
 
