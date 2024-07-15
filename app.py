@@ -122,7 +122,7 @@ def search_videos(query, limite, language,search_type):
     if videos:
         reduced_data = [extract_video_info(video, language) for video in videos]
         response_data = {
-            "data": reduced_data,
+            "data": videos,
             "state": "OK"
         }
     else:
@@ -192,7 +192,8 @@ def search():
         if query:
             # Realizar la búsqueda de videos y devolver los resultados
             response = search_videos(query, limit, language,search_type)
-            return response
+            print("debug result:",response)
+            return jsonify({'data': response})
         else:
             # Si no se proporciona un parámetro válido, devolver un mensaje de error
             return jsonify({'error': 'Please provide a valid text parameter.'})
