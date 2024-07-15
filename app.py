@@ -123,7 +123,7 @@ def search_videos(query, limite, language, search_type):
             "--no-playlist", "--no-check-certificate", "--geo-bypass",
             "--flat-playlist", "--skip-download", "--quiet", "--ignore-errors"
         ]
-    try:
+     try:
         # Get the output and analyze it
         output = subprocess.check_output(command).decode('utf-8')
         videos = [json.loads(line) for line in output.splitlines()]
@@ -144,10 +144,10 @@ def search_videos(query, limite, language, search_type):
                 "uploader": video.get("uploader", "N/A")
             })
 
-        return simplified_results
+        return json.dumps(simplified_results)  # Convertir la lista de diccionarios a JSON
 
     except subprocess.CalledProcessError:
-        return []
+        return json.dumps([])
     
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
