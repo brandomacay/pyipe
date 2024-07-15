@@ -112,22 +112,36 @@ def is_live(video):
                 return True
     return False
 
-def search_videos(query, limite, language, search_type, page):
+def search_videos(query, limite, language, search_type):
+    ydl_opts = {
+        'quiet': True,
+        'extract_flat': True,  # Extrae la información plana de los vídeos
+    }
+
+    if "playlist" in search_type:
+        ydl_opts['simulate'] = True  # Simula la descarga para obtener la lista de vídeos en la playlist
+        URL = f'https://www.youtube.com/playlist?list={query}'
+    else:
+        URL = f'https://www.youtube.com/results?search_query={query}&sp=EgIQAQ%253D%253D'
+
     try:
-        if "playlist" in search_type:
-            videos = get_playlist(query)
-        else:
-            # Ejemplo de paginación, ajusta según la API de scrapetube
-            videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video", page=page)
-        
-        if videos:
-            # Filtrar los videos en vivo
-            filtered_videos = [video for video in videos if not is_live(video)]
-            # Extraer la información de los videos y reducirla
-            reduced_data = [extract_video_info(video, language) for video in filtered_videos]
-            response_data = {"data": reduced_data, "state": "OK"}
-        else:
-            response_data = {"data": [], "state": "Error"}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(URL, download=False)
+
+            if "playlist" in search_type:
+                videos = info_dict['entries']  # Lista de vídeos en la playlist
+            else:
+                videos = info_dict['entries'][:limite]  # Limita la cantidad de vídeos según el parámetro limite
+
+            if videos:
+                # Filtrar los vídeos en vivo
+                filtered_videos = [video for video in videos if not video.get('is_live')]
+                # Extraer la información de los vídeos y reducirla
+                reduced_data = [extract_video_info(video, language) for video in filtered_videos]
+                response_data = {"data": reduced_data, "state": "OK"}
+            else:
+                response_data = {"data": [], "state": "Error"}
+
     except Exception as e:
         print(f"Error processing videos: {e}")
         app.logger.error(f"Error processing videos search: {e}")  # Registra el error con el logger de Flask
@@ -194,7 +208,7 @@ def search():
     try:
         if query:
             # Realizar la búsqueda de videos y devolver los resultados
-            response = search_videos(query, limit, language, search_type, 1)
+            response = search_videos(query, limit, language, search_type)
             response_data = json.loads(response)
             print("debug result:", response_data)
             return jsonify(response_data)
