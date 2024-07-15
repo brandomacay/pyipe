@@ -6,15 +6,12 @@
 
     SPDX-License-Identifier: MIT Licence
     See LICENSE for more information.
-'''
-import json
+'''import json
 import time
 from typing import Generator
-from bs4 import BeautifulSoup
-import re
+
 import requests
 from typing_extensions import Literal
-import urllib.parse
 
 type_property_map = {
     "videos": "videoRenderer",
@@ -27,8 +24,7 @@ def get_channel(
     channel_url: str = None,
     channel_username: str = None,
     limit: int = None,
-    sleep: float = 1,
-    proxies: dict = None,
+    sleep: int = 1,
     sort_by: Literal["newest", "oldest", "popular"] = "newest",
     content_type: Literal["videos", "shorts", "streams"] = "videos",
 ) -> Generator[dict, None, None]:
@@ -57,10 +53,6 @@ def get_channel(
             Seconds to sleep between API calls to youtube, in order to prevent getting blocked.
             Defaults to 1.
 
-        proxies (``dict``, *optional*):
-            A dictionary with the proxies you want to use. Ex:
-            ``{'https': 'http://username:password@101.102.103.104:3128'}``
-        
         sort_by (``str``, *optional*):
             In what order to retrieve to videos. Pass one of the following values.
             ``"newest"``: Get the new videos first.
@@ -87,13 +79,13 @@ def get_channel(
         content_type=content_type,
     )
     api_endpoint = "https://www.youtube.com/youtubei/v1/browse"
-    videos = get_videos(url, api_endpoint, type_property_map[content_type], limit, sleep, proxies, sort_by)
+    videos = get_videos(url, api_endpoint, type_property_map[content_type], limit, sleep, sort_by)
     for video in videos:
         yield video
 
 
 def get_playlist(
-    playlist_id: str, limit: int = None, sleep: int = 1, proxies: dict = None
+    playlist_id: str, limit: int = None, sleep: int = 1
 ) -> Generator[dict, None, None]:
 
     """Get videos for a playlist.
@@ -108,15 +100,11 @@ def get_playlist(
         sleep (``int``, *optional*):
             Seconds to sleep between API calls to youtube, in order to prevent getting blocked.
             Defaults to 1.
-        
-        proxies (``dict``, *optional*):
-            A dictionary with the proxies you want to use. Ex:
-            ``{'https': 'http://username:password@101.102.103.104:3128'}``
     """
 
     url = f"https://www.youtube.com/playlist?list={playlist_id}"
     api_endpoint = "https://www.youtube.com/youtubei/v1/browse"
-    videos = get_videos(url, api_endpoint, "playlistVideoRenderer", limit, sleep, proxies)
+    videos = get_videos(url, api_endpoint, "playlistVideoRenderer", limit, sleep)
     for video in videos:
         yield video
 
@@ -127,7 +115,6 @@ def get_search(
     sleep: int = 1,
     sort_by: Literal["relevance", "upload_date", "view_count", "rating"] = "relevance",
     results_type: Literal["video", "channel", "playlist", "movie"] = "video",
-    proxies: dict = None,
 ) -> Generator[dict, None, None]:
 
     """Search youtube and get videos.
@@ -154,11 +141,6 @@ def get_search(
         results_type (``str``, *optional*):
             What type you want to search for. Pass one of the following values:
             ``"video"|"channel"|"playlist"|"movie"``. Defaults to "video".
-        
-        proxies (``dict``, *optional*):
-            A dictionary with the proxies you want to use. Ex:
-            ``{'https': 'http://username:password@101.102.103.104:3128'}``
-
     """
 
     sort_by_map = {
@@ -179,7 +161,7 @@ def get_search(
     url = f"https://www.youtube.com/results?search_query={query}&sp={param_string}"
     api_endpoint = "https://www.youtube.com/youtubei/v1/search"
     videos = get_videos(
-        url, api_endpoint, results_type_map[results_type][1], limit, sleep, proxies
+        url, api_endpoint, results_type_map[results_type][1], limit, sleep
     )
     for video in videos:
         yield video
@@ -213,9 +195,9 @@ def get_video(
 
 
 def get_videos(
-    url: str, api_endpoint: str, selector: str, limit: int, sleep: float, proxies: dict = None, sort_by: str = None
+    url: str, api_endpoint: str, selector: str, limit: int, sleep: int, sort_by: str = None
 ) -> Generator[dict, None, None]:
-    session = get_session(proxies)
+    session = get_session()
     is_first = True
     quit_it = False
     count = 0
@@ -226,12 +208,11 @@ def get_videos(
                 get_json_from_html(html, "INNERTUBE_CONTEXT", 2, '"}},') + '"}}'
             )["client"]
             api_key = get_json_from_html(html, "innertubeApiKey", 3)
-            session.headers["X-YouTube-Client-Name"] = "3"
+            session.headers["X-YouTube-Client-Name"] = "1"
             session.headers["X-YouTube-Client-Version"] = client["clientVersion"]
             data = json.loads(
                 get_json_from_html(html, "var ytInitialData = ", 0, "};") + "}"
             )
-            print("JSON data search:", data)
             next_data = get_next_data(data, sort_by)
             is_first = False
             if sort_by and sort_by != "newest": 
@@ -258,10 +239,8 @@ def get_videos(
     session.close()
 
 
-def get_session(proxies: dict = None) -> requests.Session:
+def get_session() -> requests.Session:
     session = requests.Session()
-    if proxies:
-        session.proxies.update(proxies)
     session.headers[
         "User-Agent"
     ] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
