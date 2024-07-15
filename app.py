@@ -11,6 +11,7 @@ import yt_dlp
 from urllib.parse import urlparse, parse_qs
 import threading
 import logging
+import re
 
 app = Flask(__name__)
 EXPECTED_TOKEN = "asdasplodd34234sdfas32"
@@ -72,7 +73,7 @@ def extract_video_info(video, language):
         
     duration = video.get('lengthText', {}).get('simpleText', '')
     thumbnails = video.get('thumbnail', {}).get('thumbnails', [])
-    best_thumbnail = max(thumbnails, key=lambda t: t.get('width', 0) * t.get('height', 0))
+    best_thumbnail = max(thumbnails, key=lambda t: t.get('width', 0) * t.get('height', 0), default={})
     best_thumbnail_url = best_thumbnail.get('url', '') if best_thumbnail else ''
     views = video.get('shortViewCountText', {}).get('simpleText', '')
     if not views:
@@ -111,7 +112,7 @@ def is_live(video):
                 return True
     return False
 
-def search_videos(query, limite, language,search_type):
+def search_videos(query, limite, language, search_type):
     # Obtener la lista de videos
     videos = []
     if "playlist" in search_type:
@@ -128,8 +129,12 @@ def search_videos(query, limite, language,search_type):
             response_data = {"data": reduced_data, "state": "OK"}
         except Exception as e:
             print(f"Error processing videos: {e}")
-return json.dumps(response_data)
-    
+            response_data = {"data": [], "state": "Error"}
+    else:
+        response_data = {"data": [], "state": "Error"}
+
+    return json.dumps(response_data)
+
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
     response = requests.get(url)
@@ -152,8 +157,8 @@ def get_autocomplete_suggestions(query):
         else:
             response_data = {"suggested": [], "state": "Error"}
     else:
-        response_data = {"suggested": [], "state": f"Error"}
-    
+        response_data = {"suggested": [], "state": "Error"}
+
     return response_data
 
 class Video:
@@ -168,11 +173,11 @@ class Video:
         self.description = description
         self.preview_moving = preview_moving
         self.channel_thumbnail = channel_thumbnail
-        
+
 @app.route('/')
 def index():
     return '¡Hola, Render!'
-    
+
 @app.route('/search', methods=['GET'])
 def search():
     query = request.args.get('txt_query')
@@ -183,21 +188,13 @@ def search():
     page = int(request.args.get('page', 1))
     sort_order = request.args.get('sort_order', None)  # Para búsquedas personalizadas
 
-    
     if not query:
         return jsonify({'error': 'Parámetro de consulta "query" requerido'}), 400
 
     try:
-        if query:
-            # Realizar la búsqueda de videos y devolver los resultados
-            response = search_videos(query, limit, language,search_type)
-            print("debug result:",response)
-            return jsonify({'data': response})
-             
-        else:
-            # Si no se proporciona un parámetro válido, devolver un mensaje de error
-            return jsonify({'error': 'Please provide a valid text parameter.'})
-
+        response = search_videos(query, limit, language, search_type)
+        print("debug result:", response)
+        return jsonify({'data': json.loads(response)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -211,35 +208,51 @@ def get_playlist():
     try:
         playlist = Playlist.get(playlist_url, mode=ResultMode.dict)  # Obtener los resultados como un diccionario
         return jsonify(playlist)  # Convertir el diccionario en JSON utilizando jsonify
-
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/video', methods=['GET'])
 def get_streams():
     video_id = request.args.get('video_id')
-    #video_url = "https://www.youtube.com/watch?v="+video_id
-    URL = f'https://www.youtube.com/watch?v={video_id}'
-    low_quality_opts = {'format': 'bestvideo[height<=360]+bestaudio/best[height<=360]', 'ignoreerrors': True}
-    high_quality_opts = {'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]', 'ignoreerrors': True}
+    if not video_id:
+        return jsonify({'error': 'Parámetro de consulta "video_id" requerido'}), 400
 
+    URL = f'https://www.youtube.com/watch?v={video_id}'
     try:
         ydl_opts = {
-                'simulate': True,  # Evita la descarga del video
-                'getthumbnail': True,  # Obtiene el enlace del thumbnail
-                'quiet': True
+            'quiet': True,
+            'format': 'bestvideo+bestaudio/best',  # Obtener todos los formatos disponibles
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(URL, download=False)
+            formats = info.get('formats', [])
+
+            # Filtrar y mapear la información de los formatos
+            streams = []
+            for f in formats:
+                if 'height' in f:
+                    quality_label = f'{f["height"]}p'
+                else:
+                    quality_label = f['format_note']
+                stream = {
+                    'url': f['url'],
+                    'quality': quality_label,
+                    'format': f['format_id'],
+                    'ext': f['ext'],
+                    'filesize': f.get('filesize'),
+                }
+                streams.append(stream)
+
             video_info = {
                 'title': info.get('title', 'N/A'),
                 'channel': info.get('uploader', 'N/A'),
                 'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
                 'thumbnail': info.get('thumbnail', 'N/A'),
+                'streams': streams
             }
             return jsonify(video_info)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
