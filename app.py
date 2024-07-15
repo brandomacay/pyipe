@@ -12,6 +12,7 @@ from urllib.parse import urlparse, parse_qs
 import threading
 import logging
 import re
+import subprocess  # Añade esta línea para importar subprocess
 
 app = Flask(__name__)
 EXPECTED_TOKEN = "asdasplodd34234sdfas32"
