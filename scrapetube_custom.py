@@ -25,7 +25,7 @@ def get_channel(
     channel_url: str = None,
     channel_username: str = None,
     limit: int = None,
-    sleep: int = 1,
+    sleep: int = 3,
     sort_by: Literal["newest", "oldest", "popular"] = "newest",
     content_type: Literal["videos", "shorts", "streams"] = "videos",
 ) -> Generator[dict, None, None]:
@@ -113,7 +113,7 @@ def get_playlist(
 def get_search(
     query: str,
     limit: int = None,
-    sleep: int = 1,
+    sleep: int = 3,
     sort_by: Literal["relevance", "upload_date", "view_count", "rating"] = "relevance",
     results_type: Literal["video", "channel", "playlist", "movie"] = "video",
 ) -> Generator[dict, None, None]:
@@ -214,13 +214,16 @@ def get_videos(
             data = json.loads(
                 get_json_from_html(html, "var ytInitialData = ", 0, "};") + "}"
             )
+            print("debug search",data)
             next_data = get_next_data(data, sort_by)
             is_first = False
             if sort_by and sort_by != "newest": 
+                print("debug continue","si")
                 continue
         else:
             data = get_ajax_data(session, api_endpoint, api_key, next_data, client)
             next_data = get_next_data(data)
+            print("debug search","else")
         for result in get_videos_items(data, selector):
             try:
                 count += 1
