@@ -122,7 +122,7 @@ def search_videos(query, limite, language, search_type):
         ydl_opts['simulate'] = True  # Simula la descarga para obtener la lista de vídeos en la playlist
         URL = f'https://www.youtube.com/playlist?list={query}'
     else:
-        URL = f'https://www.youtube.com/results?search_query={query}&sp=EgIQAQ%253D%253D'
+        URL = f'https://www.youtube.com/results?search_query={query}'
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
