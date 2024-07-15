@@ -113,37 +113,34 @@ def is_live(video):
     return False
 
 def search_videos(query, limite, language, search_type):
-    ydl_opts = {
-        'quiet': True,
-        'extract_flat': True,  # Extrae la información plana de los vídeos
-    }
-
-    if "playlist" in search_type:
-        ydl_opts['simulate'] = True  # Simula la descarga para obtener la lista de vídeos en la playlist
-        URL = f'https://www.youtube.com/playlist?list={query}'
-    else:
-        URL = f'https://www.youtube.com/results?search_query={query}'
-
+    command = [
+            "yt-dlp",
+            "ytsearch{}:{}".format(limite, query),
+            "--dump-json", 
+            "--default-search", "ytsearch",
+            "--no-playlist", "--no-check-certificate", "--geo-bypass",
+            "--flat-playlist", "--skip-download", "--quiet", "--ignore-errors"
+        ]
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(URL, download=False)
+        # Get the output and analyze it
+        output = subprocess.check_output(command).decode('utf-8')
+        videos = [json.loads(line) for line in output.splitlines()]
+        
+        # Simplify the results for displaying to the user
+        simplified_results = []
+        for video in videos:
+            simplified_results.append({
+                "title": video.get("title", "N/A"),
+                "url": video.get("webpage_url", "N/A"),
+                "origin_url": video.get("original_url", "N/A"),
+                "duration": str(datetime.timedelta(seconds=video.get("duration", 0))),
+                "uploader": video.get("uploader", "N/A")
+            })
 
-            if isinstance(info_dict, dict) and 'entries' in info_dict:
-                videos = info_dict['entries']
-                if isinstance(videos, list):
-                    # Filtrar los vídeos en vivo
-                    filtered_videos = [video for video in videos if not video.get('is_live')]
-                    # Extraer la información de los vídeos y reducirla
-                    reduced_data = [extract_video_info(video, language) for video in filtered_videos]
-                    response_data = {"data": reduced_data, "state": "OK"}
-                else:
-                    response_data = {"data": [], "state": "Error: No videos found in entries"}
-            else:
-                response_data = {"data": [], "state": "Error: No 'entries' in info_dict"}
-
-    except Exception as e:
+        response_data = {"data": simplified_results, "state": "OK"}
+    
+    except subprocess.CalledProcessError as e:
         print(f"Error processing videos: {e}")
-        app.logger.error(f"Error processing videos search: {e}")  # Registra el error con el logger de Flask
         response_data = {"data": [], "state": f"Error: {str(e)}"}
 
     return json.dumps(response_data)
