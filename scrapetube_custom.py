@@ -226,11 +226,12 @@ def get_videos(
                 get_json_from_html(html, "INNERTUBE_CONTEXT", 2, '"}},') + '"}}'
             )["client"]
             api_key = get_json_from_html(html, "innertubeApiKey", 3)
-            session.headers["X-YouTube-Client-Name"] = "1"
+            session.headers["X-YouTube-Client-Name"] = "3"
             session.headers["X-YouTube-Client-Version"] = client["clientVersion"]
             data = json.loads(
                 get_json_from_html(html, "var ytInitialData = ", 0, "};") + "}"
             )
+            print("JSON data search:", data)
             next_data = get_next_data(data, sort_by)
             is_first = False
             if sort_by and sort_by != "newest": 
