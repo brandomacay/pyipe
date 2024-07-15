@@ -326,7 +326,6 @@ def get_video_streams(video_id):
     
     # Create a requests session
     session = requests.Session()
-    print("debug scrape:", "sessioon")
     try:
         # Get the page content
         response = session.get(url)
@@ -350,7 +349,6 @@ def get_video_streams(video_id):
                 
                 # Find the start index of 'adaptiveFormats' JSON data
                 start_index = script_content.find('"adaptiveFormats":')
-                print("debug start_index:", start_index)
                 if start_index != -1:
                     # Find the end index of 'adaptiveFormats' JSON data
                     end_index = script_content.find('}]', start_index) + 2
@@ -359,12 +357,11 @@ def get_video_streams(video_id):
                     json_data_str = script_content[start_index:end_index]
                     
                     # Debug print the JSON data string
-                    
+                    print("JSON data string:", json_data_str)
                     
                     # Decode the JSON data
                     try:
                         json_data = json.loads(f'{{{json_data_str}}}')
-                        print("JSON data string:", json_data)
                         # Extract URLs from the JSON data
                         for fmt in json_data['adaptiveFormats']:
                             if 'signatureCipher' in fmt:
@@ -387,6 +384,6 @@ def get_video_streams(video_id):
         return streams
     
     except requests.exceptions.RequestException as e:
-        print(f"HTTP request error:",e)
+        print(f"HTTP request error:", e)
         return []
         
