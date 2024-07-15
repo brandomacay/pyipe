@@ -128,24 +128,23 @@ def search_videos(query, limite, language, search_type):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(URL, download=False)
 
-            if "playlist" in search_type:
-                videos = info_dict['entries']  # Lista de vídeos en la playlist
+            if isinstance(info_dict, dict) and 'entries' in info_dict:
+                videos = info_dict['entries']
+                if isinstance(videos, list):
+                    # Filtrar los vídeos en vivo
+                    filtered_videos = [video for video in videos if not video.get('is_live')]
+                    # Extraer la información de los vídeos y reducirla
+                    reduced_data = [extract_video_info(video, language) for video in filtered_videos]
+                    response_data = {"data": reduced_data, "state": "OK"}
+                else:
+                    response_data = {"data": [], "state": "Error: No videos found in entries"}
             else:
-                videos = info_dict['entries'][:limite]  # Limita la cantidad de vídeos según el parámetro limite
-
-            if videos:
-                # Filtrar los vídeos en vivo
-                filtered_videos = [video for video in videos if not video.get('is_live')]
-                # Extraer la información de los vídeos y reducirla
-                reduced_data = [extract_video_info(video, language) for video in filtered_videos]
-                response_data = {"data": reduced_data, "state": "OK"}
-            else:
-                response_data = {"data": [], "state": "Error"}
+                response_data = {"data": [], "state": "Error: No 'entries' in info_dict"}
 
     except Exception as e:
         print(f"Error processing videos: {e}")
         app.logger.error(f"Error processing videos search: {e}")  # Registra el error con el logger de Flask
-        response_data = {"data": [], "state": "Error"}
+        response_data = {"data": [], "state": f"Error: {str(e)}"}
 
     return json.dumps(response_data)
     
