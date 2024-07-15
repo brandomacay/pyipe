@@ -192,7 +192,7 @@ def search():
         if query:
             # Realizar la búsqueda de videos y devolver los resultados
             response = search_videos(query, limit, language,search_type)
-            return jsonify(response)
+            return response
         else:
             # Si no se proporciona un parámetro válido, devolver un mensaje de error
             return jsonify({'error': 'Please provide a valid text parameter.'})
