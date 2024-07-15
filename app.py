@@ -70,6 +70,7 @@ def extract_video_info(video, language):
     # Traducir la fecha de publicación al idioma especificado
     if language in ["es", "pt"]:
         published_time = translate_time(published_time, language)
+        
     duration = video.get('lengthText', {}).get('simpleText', '')
     thumbnails = video.get('thumbnail', {}).get('thumbnails', [])
     best_thumbnail = max(thumbnails, key=lambda t: t.get('width', 0) * t.get('height', 0))
@@ -124,9 +125,9 @@ def search_videos(query, limite, language,search_type):
         try:
             filtered_videos = [video for video in videos if not is_live(video)]
             reduced_data = [extract_video_info(video, language) for video in filtered_videos]
-            response_data = {"data": reduced_data, "state": "OK"}
+            response_data = {"data": filtered_videos, "state": "OK"}
         except Exception as e:
-            print(f"Error processing videos: {e}")
+            print(f"Error processing videos:", {e})
     return response_data
 
 import re
