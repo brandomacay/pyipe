@@ -6,7 +6,8 @@
 
     SPDX-License-Identifier: MIT Licence
     See LICENSE for more information.
-'''import json
+'''
+import json
 import time
 from typing import Generator
 
