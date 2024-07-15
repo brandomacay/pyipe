@@ -129,6 +129,7 @@ def search_videos(query, limite, language, search_type):
             response_data = {"data": [], "state": "Error"}
     except Exception as e:
         print(f"Error processing videos: {e}")
+        app.logger.error(f"Error processing videos search: {e}")  # Registra el error con el logger de Flask     
         response_data = {"data": [], "state": "Error"}
 
     return json.dumps(response_data)
@@ -199,6 +200,7 @@ def search():
         else:
             return jsonify({'error': 'Please provide a valid text parameter.'})
     except Exception as e:
+        app.logger.error(f"Error processing videos: {e}")  # Registra el error con el logger de Flask     
         return jsonify({'error': str(e)}), 500
 
 @app.route('/playlist', methods=['GET'])
