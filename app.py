@@ -127,25 +127,27 @@ def search_videos(query, limite, language, search_type):
         # Get the output and analyze it
         output = subprocess.check_output(command).decode('utf-8')
         videos = [json.loads(line) for line in output.splitlines()]
-        
         # Simplify the results for displaying to the user
         simplified_results = []
         for video in videos:
+            duration_seconds = video.get("duration")
+            if duration_seconds is not None:
+                duration_str = str(datetime.timedelta(seconds=duration_seconds))
+            else:
+                duration_str = "N/A"
+
             simplified_results.append({
                 "title": video.get("title", "N/A"),
                 "url": video.get("webpage_url", "N/A"),
                 "origin_url": video.get("original_url", "N/A"),
-                "duration": str(datetime.timedelta(seconds=video.get("duration", 0))),
+                "duration": duration_str,
                 "uploader": video.get("uploader", "N/A")
             })
 
-        response_data = {"data": simplified_results, "state": "OK"}
-    
-    except subprocess.CalledProcessError as e:
-        print(f"Error processing videos: {e}")
-        response_data = {"data": [], "state": f"Error: {str(e)}"}
+        return simplified_results
 
-    return json.dumps(response_data)
+    except subprocess.CalledProcessError:
+        return []
     
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
