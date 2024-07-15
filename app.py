@@ -3,7 +3,7 @@ from youtubesearchpython import *
 import os
 import sys
 import json
-import scrapetube_custom as scrapetube
+import scrapetube
 import video_extractor as YouTubeVideoExtractor
 import requests
 from bs4 import BeautifulSoup
@@ -115,23 +115,21 @@ def search_videos(query, limite, language,search_type):
     # Obtener la lista de videos
     videos = []
     if "playlist" in search_type:
-        videos = scrapetube.get_playlist(query)
+        videos = get_playlist(query)
     else:
         videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
     # Convertir la lista de videos a formato JSON
     if videos:
-        reduced_data = [extract_video_info(video, language) for video in videos]
-        response_data = {
-            "data": videos,
-            "state": "OK"
-        }
-    else:
-        response_data = {
-            "data": [],
-            "state": "ERROR"
-        }
+        try:
+            # Filtrar los videos en vivo
+            filtered_videos = [video for video in videos if not is_live(video)]
+            # Extraer la información de los videos y reducirla
+            reduced_data = [extract_video_info(video, language) for video in filtered_videos]
+            response_data = {"data": reduced_data, "state": "OK"}
+        except Exception as e:
+            print(f"Error processing videos: {e}")
     return json.dumps(response_data)
-
+    
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
     response = requests.get(url)
@@ -185,6 +183,7 @@ def search():
     page = int(request.args.get('page', 1))
     sort_order = request.args.get('sort_order', None)  # Para búsquedas personalizadas
 
+    
     if not query:
         return jsonify({'error': 'Parámetro de consulta "query" requerido'}), 400
 
@@ -194,6 +193,7 @@ def search():
             response = search_videos(query, limit, language,search_type)
             print("debug result:",response)
             return jsonify({'data': response})
+             
         else:
             # Si no se proporciona un parámetro válido, devolver un mensaje de error
             return jsonify({'error': 'Please provide a valid text parameter.'})
