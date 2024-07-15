@@ -4,5 +4,6 @@ requests==2.27.1
 typing_extensions
 gunicorn
 yt_dlp
+escrapetube
 bs4
 git+https://github.com/alexmercerind/youtube-search-python.git
