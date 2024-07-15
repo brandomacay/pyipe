@@ -122,8 +122,9 @@ def search_videos(query, limite, language, search_type):
             "--default-search", "ytsearch",
             "--no-playlist", "--no-check-certificate", "--geo-bypass",
             "--flat-playlist", "--skip-download", "--quiet", "--ignore-errors"
-        ]
-     try:
+    ]
+    
+    try:
         # Get the output and analyze it
         output = subprocess.check_output(command).decode('utf-8')
         videos = [json.loads(line) for line in output.splitlines()]
