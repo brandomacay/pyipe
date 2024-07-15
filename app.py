@@ -118,19 +118,20 @@ def search_videos(query, limite, language,search_type):
     if "playlist" in search_type:
         videos = scrapetube.get_playlist(query)
     else:
-        videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type=search_type)
+        videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
     # Convertir la lista de videos a formato JSON
-    response_data = {"data": [], "state": "Error"}
     if videos:
-        try:
-            filtered_videos = [video for video in videos if not is_live(video)]
-            reduced_data = [extract_video_info(video, language) for video in filtered_videos]
-            response_data = {"data": filtered_videos, "state": "OK"}
-        except Exception as e:
-            print(f"Error processing videos:", {e})
-    return response_data
-
-import re
+        reduced_data = [extract_video_info(video, language) for video in videos]
+        response_data = {
+            "data": reduced_data,
+            "state": "OK"
+        }
+    else:
+        response_data = {
+            "data": [],
+            "state": "ERROR"
+        }
+    return json.dumps(response_data)
 
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
@@ -218,18 +219,27 @@ def get_playlist():
 def get_streams():
     video_id = request.args.get('video_id')
     #video_url = "https://www.youtube.com/watch?v="+video_id
-    if not video_id:
-        return jsonify({'error': 'Missing video_id parameter'}), 400
+    URL = f'https://www.youtube.com/watch?v='+video_id
+    low_quality_opts = {'format': 'bestvideo[height<=360]+bestaudio/best[height<=360]', 'ignoreerrors': True}
+    high_quality_opts = {'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]', 'ignoreerrors': True}
 
-    # Llamar a la función get_video_streams para obtener las URLs de los streams
     try:
-        videoss = [scrapetube.get_video_streams(video_id)]  # Aquí obtienes el video usando scrapetube
-        response_data = {"links":  videoss, "state": "OK"}
-        return jsonify(response_data)
-
+        ydl_opts = {
+                'simulate': True,  # Evita la descarga del video
+                'getthumbnail': True,  # Obtiene el enlace del thumbnail
+                'quiet': True
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(URL, download=False)
+                video_info = {
+                    'title': info.get('title', 'N/A'),
+                    'channel': info.get('uploader', 'N/A'),
+                    'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
+                    'thumbnail': info.get('thumbnail', 'N/A'),
+                }
+                return jsonify(video_info)
     except Exception as e:
-        app.logger.error(f'Error al obtener el video: {str(e)}', exc_info=True)
-        return jsonify({'error': 'No se pudo obtener el video'}), 500
+        return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
