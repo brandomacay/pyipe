@@ -249,9 +249,6 @@ def get_streams():
     ydl_opts = {
         'quiet': True,
         'format': 'bestvideo+bestaudio/best',  # Obtener todos los formatos disponibles
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        },
     }
 
     try:
@@ -291,19 +288,22 @@ def get_streams():
             if not selected_streams:
                 return jsonify({'error': 'No se encontraron calidades de video adecuadas'}), 404
 
-            # Función generadora para transmitir el video
+            # Transmitir el primer video
             def generate_video_stream(url):
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                ydl_opts_stream = {
+                    'quiet': True,
+                    'format': url,
+                    'noplaylist': True,
                 }
-                with requests.get(url, headers=headers, stream=True) as response:
-                    response.raise_for_status()
-                    for chunk in response.iter_content(chunk_size=1024):
-                        if chunk:
+                with yt_dlp.YoutubeDL(ydl_opts_stream) as ydl_stream:
+                    ydl_stream.download([URL])
+                    # Se asume que el archivo descargado tiene la misma estructura de nombre que `ydl.prepare_filename(info)`
+                    video_filename = ydl_stream.prepare_filename(info)
+                    with open(video_filename, 'rb') as f:
+                        while chunk := f.read(1024):
                             yield chunk
 
-            # Transmitir el primer video
-            stream_1 = generate_video_stream(selected_streams[0]['url'])
+            stream_1 = generate_video_stream(selected_streams[0]['format'])
             return Response(stream_1, content_type='video/mp4', headers={
                 'Content-Disposition': f'attachment; filename={video_id}_low.mp4'
             })
