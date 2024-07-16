@@ -243,6 +243,9 @@ def get_streams():
         'quiet': True,
         'format': 'bestvideo+bestaudio/best',  # Obtener todos los formatos disponibles
         'outtmpl': '/tmp/%(id)s.%(ext)s',  # Guardar archivos en /tmp
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
     }
 
     try:
