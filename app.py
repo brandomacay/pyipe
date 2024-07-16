@@ -296,10 +296,11 @@ def get_streams():
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 }
-                response = requests.get(url, headers=headers, stream=True)
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        yield chunk
+                with requests.get(url, headers=headers, stream=True) as response:
+                    response.raise_for_status()
+                    for chunk in response.iter_content(chunk_size=1024):
+                        if chunk:
+                            yield chunk
 
             # Transmitir el primer video
             stream_1 = generate_video_stream(selected_streams[0]['url'])
