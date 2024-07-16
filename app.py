@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, send_file, request, jsonify
 from youtubesearchpython import *
 import os
 import sys
@@ -239,41 +239,52 @@ def get_streams():
         return jsonify({'error': 'Parámetro de consulta "video_id" requerido'}), 400
 
     URL = f'https://www.youtube.com/watch?v={video_id}'
-    try:
-        ydl_opts = {
-            'quiet': True,
-            'format': 'bestvideo+bestaudio/best',  # Obtener todos los formatos disponibles
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(URL, download=False)
-            formats = info.get('formats', [])
+    ydl_opts = {
+        'quiet': True,
+        'format': 'bestvideo+bestaudio/best',  # Obtener todos los formatos disponibles
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(URL, download=False)
+        formats = info.get('formats', [])
 
-            # Filtrar y mapear la información de los formatos
-            streams = []
-            for f in formats:
-                if 'height' in f:
-                    quality_label = f'{f["height"]}p'
-                else:
-                    quality_label = f['format_note']
-                stream = {
-                    'url': f['url'],
-                    'quality': quality_label,
-                    'format': f['format_id'],
-                    'ext': f['ext'],
-                    'filesize': f.get('filesize'),
-                }
-                streams.append(stream)
-
-            video_info = {
-                'title': info.get('title', 'N/A'),
-                'channel': info.get('uploader', 'N/A'),
-                'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
-                'thumbnail': info.get('thumbnail', 'N/A'),
-                'streams': streams
+        # Filtrar y mapear la información de los formatos
+        streams = []
+        for f in formats:
+            if 'height' in f:
+                quality_label = f'{f["height"]}p'
+            else:
+                quality_label = f['format_note']
+            stream = {
+                'url': f['url'],
+                'quality': quality_label,
+                'format': f['format_id'],
+                'ext': f['ext'],
+                'filesize': f.get('filesize'),
             }
-            return jsonify(video_info)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+            streams.append(stream)
+
+        # Selección de calidades de video
+        qualities = [
+            {'min': 240, 'default': 460},
+            {'min': 720, 'max': 1080},
+        ]
+        selected_streams = []
+        for quality in qualities:
+            for stream in streams:
+                if quality['min'] <= stream['height'] <= quality.get('max', float('inf')):
+                    selected_streams.append(stream)
+                    break
+
+        # Descargar los videos seleccionados
+        video_files = []
+        for stream in selected_streams:
+            video_file = ydl.prepare_filename(info)
+            ydl.download([stream['url']])
+            video_files.append(video_file)
+
+        # Enviar los archivos de video como respuesta
+        return send_file(video_files[0], as_attachment=True, attachment_filename=f'{video_id}_low.mp4'), \
+               send_file(video_files[1], as_attachment=True, attachment_filename=f'{video_id}_high.mp4')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
