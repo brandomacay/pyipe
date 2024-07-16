@@ -242,49 +242,65 @@ def get_streams():
     ydl_opts = {
         'quiet': True,
         'format': 'bestvideo+bestaudio/best',  # Obtener todos los formatos disponibles
+        'outtmpl': '/tmp/%(id)s.%(ext)s',  # Guardar archivos en /tmp
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(URL, download=False)
-        formats = info.get('formats', [])
 
-        # Filtrar y mapear la información de los formatos
-        streams = []
-        for f in formats:
-            if 'height' in f:
-                quality_label = f'{f["height"]}p'
-            else:
-                quality_label = f['format_note']
-            stream = {
-                'url': f['url'],
-                'quality': quality_label,
-                'format': f['format_id'],
-                'ext': f['ext'],
-                'filesize': f.get('filesize'),
-            }
-            streams.append(stream)
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(URL, download=False)
+            formats = info.get('formats', [])
 
-        # Selección de calidades de video
-        qualities = [
-            {'min': 240, 'default': 460},
-            {'min': 720, 'max': 1080},
-        ]
-        selected_streams = []
-        for quality in qualities:
-            for stream in streams:
-                if quality['min'] <= stream['height'] <= quality.get('max', float('inf')):
-                    selected_streams.append(stream)
-                    break
+            # Filtrar y mapear la información de los formatos
+            streams = []
+            for f in formats:
+                if 'height' in f:
+                    quality_label = f'{f["height"]}p'
+                else:
+                    quality_label = f['format_note']
+                stream = {
+                    'url': f['url'],
+                    'quality': quality_label,
+                    'format': f['format_id'],
+                    'ext': f['ext'],
+                    'filesize': f.get('filesize'),
+                    'height': f.get('height', 0)
+                }
+                streams.append(stream)
 
-        # Descargar los videos seleccionados
-        video_files = []
-        for stream in selected_streams:
-            video_file = ydl.prepare_filename(info)
-            ydl.download([stream['url']])
-            video_files.append(video_file)
+            # Selección de calidades de video
+            qualities = [
+                {'min': 240, 'max': 460},
+                {'min': 720, 'max': 1080},
+            ]
+            selected_streams = []
+            for quality in qualities:
+                for stream in streams:
+                    if quality['min'] <= stream['height'] <= quality.get('max', float('inf')):
+                        selected_streams.append(stream)
+                        break
 
-        # Enviar los archivos de video como respuesta
-        return send_file(video_files[0], as_attachment=True, attachment_filename=f'{video_id}_low.mp4'), \
-               send_file(video_files[1], as_attachment=True, attachment_filename=f'{video_id}_high.mp4')
+            if not selected_streams:
+                return jsonify({'error': 'No se encontraron calidades de video adecuadas'}), 404
 
+            # Descargar los videos seleccionados
+            video_files = []
+            for stream in selected_streams:
+                ydl_opts['format'] = stream['format']
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([URL])
+                    video_files.append(ydl.prepare_filename(info))
+
+            if len(video_files) != 2:
+                return jsonify({'error': 'No se pudieron descargar ambos videos'}), 500
+
+            # Enviar los archivos de video como respuesta
+            response = send_file(video_files[0], as_attachment=True, attachment_filename=f'{video_id}_low.mp4')
+            response.headers['X-Sendfile'] = video_files[1]  # Enviar ambos archivos como cabecera personalizada
+            response.headers['Content-Disposition'] = f'attachment; filename={video_id}_high.mp4'
+            return response
+
+    except Exception as e:
+        return jsonify({'error': f'Error al procesar el video: {str(e)}'}), 500
+        
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
