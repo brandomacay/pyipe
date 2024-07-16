@@ -10,7 +10,8 @@
 import json
 import time
 from typing import Generator
-
+import urllib.parse
+from bs4 import BeautifulSoup
 import requests
 from typing_extensions import Literal
 
@@ -321,71 +322,31 @@ def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
     return search_dict(data, selector)
     
 def get_video_streams(video_id):
-    # Define the video URL
     url = f"https://www.youtube.com/watch?v={video_id}"
-    
-    # Create a requests session
+    # Crear una sesión de requests
     session = requests.Session()
-    try:
-        # Get the page content
-        response = session.get(url)
-        response.raise_for_status()
-        html = response.text
-        
-        # Parse the HTML content
-        soup = BeautifulSoup(html, 'html.parser')
-        
-        # Initialize an empty list to store stream URLs
+    session.headers[
+        "User-Agent"
+    ] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+    response = session.get(url)
+    html = response.text
+    soup = BeautifulSoup(html, 'html.parser')
+
+    # Find the script tag that contains the video streams
+    script_tag = soup.find('script', {'id': 'initialData'})
+
+    if script_tag:
+        # Extract the JSON data from the script tag
+        json_data = json.loads(script_tag.text)
+
+        # Extract the video streams from the JSON data
         streams = []
-        
-        # Find all <script> tags in the HTML
-        scripts = soup.find_all('script')
-        
-        # Iterate through all <script> tags to find the one containing 'adaptiveFormats'
-        for script in scripts:
-            if 'adaptiveFormats' in str(script):
-                # Extract the script content
-                script_content = str(script)
-                
-                # Find the start index of 'adaptiveFormats' JSON data
-                start_index = script_content.find('"adaptiveFormats":')
-                if start_index != -1:
-                    # Find the end index of 'adaptiveFormats' JSON data
-                    end_index = script_content.find(']', start_index) + 1
-                    
-                    # Extract the JSON data string
-                    json_data_str = script_content[start_index:end_index]
-                    
-                    # Debug print the JSON data string
-                    print("JSON data string:", json_data_str)
-                    
-                    # Decode the JSON data
-                    try:
-                        json_data = json.loads(f'{{{json_data_str}}}')
-                        adaptive_formats = json_data.get('adaptiveFormats', [])
-                        
-                        # Extract URLs from the JSON data
-                        for fmt in adaptive_formats:
-                            if 'signatureCipher' in fmt:
-                                cipher = fmt['signatureCipher']
-                                cipher_data = urllib.parse.parse_qs(cipher)
-                                url = cipher_data['url'][0]
-                                s = cipher_data['s'][0]
-                                # Aquí se debe agregar la lógica de descifrado de la firma (s)
-                                # En este caso, simplemente agregamos la firma para que funcione
-                                url += f'&sig={s}'
-                                streams.append(url)
-                            elif 'url' in fmt:
-                                streams.append(fmt['url'])
-                    except json.JSONDecodeError as e:
-                        print("JSON decoding error:", e)
-        
-        # Close the session
-        session.close()
-        
+        for fmt in json_data['contents']['twoColumnWatchNextResults']['results']['results']['contents']:
+            if fmt['__typename'] == 'VideoSecondaryInfoRenderer':
+                for stream in fmt['videoSecondaryInfoRenderer']['streams']:
+                    streams.append(stream['url'])
+
         return streams
-    
-    except requests.exceptions.RequestException as e:
-        print(f"HTTP request error:", e)
+    else:
         return []
         
