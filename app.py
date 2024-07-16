@@ -232,6 +232,13 @@ def get_playlist():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def is_url_accessible(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    }
+    response = requests.head(url, headers=headers)
+    return response.status_code == 200
+
 @app.route('/video', methods=['GET'])
 def get_streams():
     video_id = request.args.get('video_id')
@@ -242,7 +249,6 @@ def get_streams():
     ydl_opts = {
         'quiet': True,
         'format': 'bestvideo+bestaudio/best',  # Obtener todos los formatos disponibles
-        'outtmpl': '/tmp/%(id)s.%(ext)s',  # Guardar archivos en /tmp
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         },
@@ -285,25 +291,21 @@ def get_streams():
             if not selected_streams:
                 return jsonify({'error': 'No se encontraron calidades de video adecuadas'}), 404
 
-            # Descargar los videos seleccionados
-            video_files = []
-            for stream in selected_streams:
-                ydl_opts['format'] = stream['format']
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([URL])
-                    video_files.append(ydl.prepare_filename(info))
+            # Función generadora para transmitir el video
+            def generate_video_stream(url):
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                }
+                response = requests.get(url, headers=headers, stream=True)
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        yield chunk
 
-            if len(video_files) != 2:
-                return jsonify({'error': 'No se pudieron descargar ambos videos'}), 500
-
-            # Crear un archivo ZIP con los videos
-            zip_filename = f'/tmp/{video_id}.zip'
-            with zipfile.ZipFile(zip_filename, 'w') as zipf:
-                for file in video_files:
-                    zipf.write(file, os.path.basename(file))
-
-            # Enviar el archivo ZIP como respuesta
-            return send_file(zip_filename, as_attachment=True, attachment_filename=f'{video_id}.zip')
+            # Transmitir el primer video
+            stream_1 = generate_video_stream(selected_streams[0]['url'])
+            return Response(stream_1, content_type='video/mp4', headers={
+                'Content-Disposition': f'attachment; filename={video_id}_low.mp4'
+            })
 
     except Exception as e:
         return jsonify({'error': f'Error al procesar el video: {str(e)}'}), 500
