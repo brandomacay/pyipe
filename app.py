@@ -263,7 +263,7 @@ def get_streams():
                     'format': f['format_id'],
                     'ext': f['ext'],
                     'filesize': f.get('filesize'),
-                    'height': f.get('height', 0)
+                    'height': f.get('height', 0) or 0  # Asegurarse de que height sea un número
                 }
                 streams.append(stream)
 
@@ -293,11 +293,14 @@ def get_streams():
             if len(video_files) != 2:
                 return jsonify({'error': 'No se pudieron descargar ambos videos'}), 500
 
-            # Enviar los archivos de video como respuesta
-            response = send_file(video_files[0], as_attachment=True, attachment_filename=f'{video_id}_low.mp4')
-            response.headers['X-Sendfile'] = video_files[1]  # Enviar ambos archivos como cabecera personalizada
-            response.headers['Content-Disposition'] = f'attachment; filename={video_id}_high.mp4'
-            return response
+            # Crear un archivo ZIP con los videos
+            zip_filename = f'/tmp/{video_id}.zip'
+            with zipfile.ZipFile(zip_filename, 'w') as zipf:
+                for file in video_files:
+                    zipf.write(file, os.path.basename(file))
+
+            # Enviar el archivo ZIP como respuesta
+            return send_file(zip_filename, as_attachment=True, attachment_filename=f'{video_id}.zip')
 
     except Exception as e:
         return jsonify({'error': f'Error al procesar el video: {str(e)}'}), 500
