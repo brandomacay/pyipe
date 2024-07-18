@@ -1,5 +1,4 @@
 from flask import Flask, request, jsonify, Response
-from youtubesearchpython import *
 import os
 import sys
 import json
