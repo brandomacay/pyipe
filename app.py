@@ -4,7 +4,6 @@ import os
 import sys
 import json
 import scrapetube
-import video_extractor as YouTubeVideoExtractor
 import requests
 from bs4 import BeautifulSoup
 import yt_dlp
