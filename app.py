@@ -114,41 +114,20 @@ def is_live(video):
                 return True
     return False
 
-def search_videos(query, limite, language, search_type):
-    command = [
-            "yt-dlp",
-            "ytsearch{}:{}".format(limite, query),
-            "--dump-json", 
-            "--default-search", "ytsearch",
-            "--no-playlist", "--no-check-certificate", "--geo-bypass",
-            "--flat-playlist", "--skip-download", "--quiet", "--ignore-errors"
-    ]
-    
-    try:
-        # Get the output and analyze it
-        output = subprocess.check_output(command).decode('utf-8')
-        videos = [json.loads(line) for line in output.splitlines()]
-        # Simplify the results for displaying to the user
-        simplified_results = []
-        for video in videos:
-            duration_seconds = video.get("duration")
-            if duration_seconds is not None:
-                duration_str = str(datetime.timedelta(seconds=duration_seconds))
-            else:
-                duration_str = "N/A"
-
-            simplified_results.append({
-                "title": video.get("title", "N/A"),
-                "url": video.get("webpage_url", "N/A"),
-                "origin_url": video.get("original_url", "N/A"),
-                "duration": duration_str,
-                "uploader": video.get("uploader", "N/A")
-            })
-
-        return json.dumps(simplified_results)  # Convertir la lista de diccionarios a JSON
-
-    except subprocess.CalledProcessError:
-        return json.dumps([])
+def search_videos(query, limite, language):
+    # Obtener la lista de videos
+    videos = scrapetube.get_search(query, limit=limite, sort_by="relevance", results_type="video")
+    # Convertir la lista de videos a formato JSON
+    if videos:
+        try:
+            # Filtrar los videos en vivo
+            filtered_videos = [video for video in videos if not is_live(video)]
+            # Extraer la información de los videos y reducirla
+            reduced_data = [extract_video_info(video, language) for video in filtered_videos]
+            response_data = {"data": reduced_data, "state": "OK"}
+        except Exception as e:
+            print(f"Error processing videos: {e}")
+    return json.dumps(response_data)
     
 def get_autocomplete_suggestions(query):
     url = f"https://suggestqueries.google.com/complete/search?client=youtube&q={query}"
@@ -209,7 +188,7 @@ def search():
     try:
         if query:
             # Realizar la búsqueda de videos y devolver los resultados
-            response = search_videos(query, limit, language, search_type)
+            response = search_videos(query, limit, language)
             response_data = json.loads(response)
             print("debug result:", response_data)
             return jsonify(response_data)
@@ -238,6 +217,88 @@ def is_url_accessible(url):
     }
     response = requests.head(url, headers=headers)
     return response.status_code == 200
+
+
+def download_video(video_id, ydl_opts, quality_label, download_complete_callback):
+    URL = f'https://www.youtube.com/watch?v={video_id}'
+    output_path = os.path.join(os.path.dirname(__file__), 'files/multimedia/')
+    ydl_opts['outtmpl'] = os.path.join(output_path, f'{video_id}_{quality_label}.%(ext)s')
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([URL])
+    download_complete_callback(video_id, quality_label)
+
+def download_complete(video_id, quality_label):
+    print(f"Download complete for video {video_id} with quality {quality_label}")
+
+def get_video_info(video_id, mode):
+    URL = f'https://www.youtube.com/watch?v={video_id}'
+    low_quality_opts = {'format': 'bestvideo[height<=360]+bestaudio/best[height<=360]', 'ignoreerrors': True}
+    high_quality_opts = {'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]', 'ignoreerrors': True}
+
+    try:
+        if mode == '35':
+            ydl_opts = {
+                'simulate': True,  # Evita la descarga del video
+                'getthumbnail': True,  # Obtiene el enlace del thumbnail
+                'quiet': True
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(URL, download=False)
+                video_info = {
+                    'title': info.get('title', 'N/A'),
+                    'channel': info.get('uploader', 'N/A'),
+                    'duration_ms': info.get('duration', 0) * 1000,  # Convertir segundos a milisegundos
+                    'thumbnail': info.get('thumbnail', 'N/A'),
+                }
+                return video_info
+
+        output_path = os.path.join(os.path.dirname(__file__), 'files/multimedia/')
+        video_file_low = os.path.join(output_path, f"{video_id}_low")
+        video_file_high = os.path.join(output_path, f"{video_id}_high")
+
+        for ext in ['mp4', 'webm', 'mkv', 'm4a']:
+            if os.path.exists(f"{video_file_low}.{ext}") and os.path.exists(f"{video_file_high}.{ext}"):
+                return {
+                    'low_quality_url': f'https://resources.path.ps.psrockola.com/yipe/files/multimedia/{video_id}_low.{ext}',
+                    'high_quality_url': f'https://resources.path.ps.psrockola.com/yipe/files/multimedia/{video_id}_high.{ext}'
+                }
+
+        if mode in ['22', '101']:
+            threads = []
+            download_thread_low = threading.Thread(target=download_video, args=(video_id, low_quality_opts, 'low', download_complete))
+            download_thread_high = threading.Thread(target=download_video, args=(video_id, high_quality_opts, 'high', download_complete))
+
+            threads.append(download_thread_low)
+            threads.append(download_thread_high)
+
+            for thread in threads:
+                thread.start()
+
+            for thread in threads:
+                thread.join()  # Esperar a que las descargas terminen
+
+            for ext in ['mp4', 'webm', 'mkv', 'm4a']:
+                if os.path.exists(f"{video_file_low}.{ext}") and os.path.exists(f"{video_file_high}.{ext}"):
+                    return {
+                        'low_quality_url': f'https://resources.path.ps.psrockola.com/yipe/files/multimedia/{video_id}_low.{ext}',
+                        'high_quality_url': f'https://resources.path.ps.psrockola.com/yipe/files/multimedia/{video_id}_high.{ext}'
+                    }
+            return {'error': 'Video download failed or files not found.'}
+
+        else:
+            return {'error': 'Invalid mode to get video info.'}
+    except Exception as e:
+        return {'error': str(e)}
+
+@app.route('/get_video_info', methods=['GET'])
+def get_video_info_route():
+    video_id = request.args.get('video_id', '')
+    modeget = request.args.get('modeget', '101')
+    if video_id:
+        response = get_video_info(video_id, modeget)
+        return jsonify(response)
+    else:
+        return jsonify({'error': 'Please provide a video_id parameter.'})
 
 @app.route('/video', methods=['GET'])
 def get_streams():
